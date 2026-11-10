@@ -418,3 +418,5 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
   .signed-in .overview .hero { grid-template-columns: minmax(0, 1fr); }
   .signed-in #connect { grid-column: 1; grid-row: auto; justify-self: start; margin-top: 4px; }
 }
+
+.upload-hint { padding: 0 10px 6px; font-size: .72rem; }

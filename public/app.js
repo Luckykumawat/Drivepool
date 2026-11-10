@@ -586,46 +586,54 @@ const folderChooser = byId('folder');
 const uploadFolder = byId('choose-folder');
 uploadFolder.onclick = () => openUploadPicker(folderChooser);
 
-async function uploadSelection(event) {
-  const input = event.currentTarget;
-  const selected = Array.from(input.files);
-  if (!selected.length) return;
+async function uploadFiles(selected) {
+  if (!selected.length || upload.disabled || showingBin) return;
   upload.disabled = uploadFolder.disabled = true;
   progress.value = 0;
   progress.hidden = false;
   const total = selected.reduce((sum, file) => sum + file.size, 0) || 1;
   const destinationFolder = currentFolder;
+  const failures = [];
   let completed = 0;
   let count = 0;
   let result;
-  let uploadError;
   try {
-    for (const file of selected) {
-      const relativeFolder = file.webkitRelativePath.split('/').slice(0, -1).join('/');
+    for (const [index, file] of selected.entries()) {
+      const relativeFolder = (file.webkitRelativePath || '').split('/').slice(0, -1).join('/');
       const folder = [destinationFolder, relativeFolder].filter(Boolean).join('/');
-      message('Uploading ' + (count + 1) + ' of ' + selected.length + ' · ' + file.name + '…');
-      result = await sendFile(file, folder, completed, total);
+      message('Uploading ' + (index + 1) + ' of ' + selected.length + ' · ' + file.name + '…');
+      try {
+        result = await sendFile(file, folder, completed, total);
+        count++;
+      } catch (error) {
+        failures.push(file.name + ': ' + error.message);
+      }
       completed += file.size;
-      count++;
+      progress.value = completed / total * 100;
     }
-  } catch (error) {
-    uploadError = error.message;
-  }
-  try {
-    await refresh();
-    if (uploadError) message(count + ' of ' + selected.length + ' files saved. ' + uploadError);
-    else if (count > 1) message(count + ' files saved.');
-    else if (result.split) message('Saved across ' + result.parts + ' Drives. Download returns the original file.');
-    else message('Saved to ' + result.account + '.');
-  } catch (error) {
-    message(count + ' files saved. Refresh failed. ' + (uploadError || error.message));
+    const summary = failures.length
+      ? count + ' of ' + selected.length + ' files saved. ' + failures.join(' · ')
+      : count > 1 ? count + ' files saved.'
+        : result.split ? 'Saved across ' + result.parts + ' Drives. Download returns the original file.'
+          : 'Saved to ' + result.account + '.';
+    try {
+      await refresh();
+      message(summary);
+    } catch (error) {
+      message(summary + ' Could not refresh the file list. ' + error.message);
+    }
   } finally {
-    input.value = '';
     upload.disabled = uploadFolder.disabled = false;
     progress.hidden = true;
   }
 }
-chooser.onchange = folderChooser.onchange = uploadSelection;
+
+chooser.onchange = folderChooser.onchange = event => {
+  const input = event.currentTarget;
+  const selected = Array.from(input.files);
+  input.value = '';
+  void uploadFiles(selected);
+};
 
 let installPrompt;
 window.addEventListener('beforeinstallprompt', event => {
