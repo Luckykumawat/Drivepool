@@ -67,6 +67,7 @@ async function refresh() {
 }
 
 let files = [];
+let showingBin = false;
 let currentFolder = '';
 let view = 'grid';
 try {
@@ -153,6 +154,7 @@ async function changeFile(file, action) {
     if (!email) return;
     fields.email = email;
   }
+  if (action === 'delete' && !window.confirm('Permanently delete “' + file.name + '”? This cannot be undone.')) return;
   if (action === 'trash' && !window.confirm('Move “' + file.name + '” to Google Drive bin?')) return;
 
   try {
@@ -164,6 +166,8 @@ async function changeFile(file, action) {
       rename: 'File renamed.',
       copy: 'Copy created.',
       trash: 'Moved to Google Drive bin.',
+      restore: 'File restored.',
+      delete: 'File permanently deleted.',
       share: result.url ? 'Download access granted to the recipient.' : 'Google Drive invitation sent.'
     };
     message(messages[action]);
@@ -173,33 +177,57 @@ async function changeFile(file, action) {
   await refresh().catch(error => message(error.message));
 }
 
-async function trashFolder(path) {
-  const nested = files.filter(file => file.folder === path || file.folder?.startsWith(path + '/'));
-  if (!window.confirm('Move all ' + nested.length + ' files in “' + path + '” to Google Drive bin?')) return;
-  let moved = 0;
+async function changeFolder(path, action) {
+  const nested = files.filter(file => Boolean(file.trashed) === (action !== 'trash') &&
+    (file.folder === path || file.folder?.startsWith(path + '/')));
+  const instructions = {
+    trash: ['Move to bin', 'moved to bin'],
+    restore: ['Restore', 'restored'],
+    delete: ['Permanently delete', 'permanently deleted']
+  };
+  const [verb, outcome] = instructions[action];
+  const warning = action === 'delete' ? ' This cannot be undone.' : '';
+  if (!window.confirm(verb + ' all ' + nested.length + ' files in “' + path + '”?' + warning)) return;
+  let completed = 0;
   try {
     for (const file of nested) {
-      await runFileAction(file, 'trash');
-      moved++;
+      await runFileAction(file, action);
+      completed++;
     }
-    message('Moved ' + moved + ' files to Google Drive bin.');
+    message(completed + ' files ' + outcome + '.');
   } catch (error) {
-    message('Moved ' + moved + ' of ' + nested.length + ' files. ' + error.message);
+    message(completed + ' of ' + nested.length + ' files ' + outcome + '. ' + error.message);
   }
   await refresh().catch(error => message(error.message));
 }
+
+function showBin(value) {
+  showingBin = value;
+  byId('show-library').setAttribute('aria-pressed', String(!value));
+  byId('show-bin').setAttribute('aria-pressed', String(value));
+  byId('library-title').textContent = value ? 'Bin' : 'Your files';
+  byId('library-description').textContent = value
+    ? 'Restore files to their original folder or delete them permanently.'
+    : 'Manage files from all your connected Drives.';
+  byId('upload-actions').hidden = value;
+  openFolder('');
+}
+
+byId('show-library').onclick = () => showBin(false);
+byId('show-bin').onclick = () => showBin(true);
 
 function renderFiles() {
   const query = byId('search').value.trim().toLowerCase();
   const list = byId('files');
   list.dataset.view = view;
+  byId('folders').dataset.view = view;
   byId('list-view').setAttribute('aria-pressed', String(view === 'list'));
   byId('grid-view').setAttribute('aria-pressed', String(view === 'grid'));
 
   const breadcrumbs = byId('breadcrumbs');
   breadcrumbs.replaceChildren();
   const parts = currentFolder ? currentFolder.split('/') : [];
-  for (const [index, name] of ['All files', ...parts].entries()) {
+  for (const [index, name] of [showingBin ? 'Bin' : 'All files', ...parts].entries()) {
     const button = document.createElement('button');
     button.textContent = name;
     button.onclick = () => openFolder(parts.slice(0, index).join('/'));
@@ -210,6 +238,7 @@ function renderFiles() {
   const visibleFiles = [];
   const prefix = currentFolder ? currentFolder + '/' : '';
   for (const file of files) {
+    if (Boolean(file.trashed) !== showingBin) continue;
     const path = file.folder || '';
     if (query) {
       if ((path + '/' + file.name).toLowerCase().includes(query)) visibleFiles.push(file);
@@ -233,10 +262,14 @@ function renderFiles() {
     button.onclick = () => openFolder(path);
     const item = document.createElement('li');
     item.className = 'folder-item';
-    item.append(button, actionsMenu(name, [
-      ['Open', () => openFolder(path)],
-      ['Move folder contents to bin', () => trashFolder(path)]
-    ]));
+    const actions = [['Open', () => openFolder(path)]];
+    if (showingBin) {
+      actions.push(['Restore folder contents', () => changeFolder(path, 'restore')],
+        ['Delete folder contents permanently', () => changeFolder(path, 'delete')]);
+    } else {
+      actions.push(['Move folder contents to bin', () => changeFolder(path, 'trash')]);
+    }
+    item.append(button, actionsMenu(name, actions));
     return item;
   });
   const fileRows = visibleFiles.map(file => {
@@ -244,17 +277,20 @@ function renderFiles() {
     const id = file.split ? encodeURIComponent(file.id)
       : encodeURIComponent(file.account.id) + '/' + encodeURIComponent(file.id);
     const download = (file.split ? '/api/split-download/' : '/api/download/') + id;
-    const actions = [
+    const actions = showingBin ? [
+      ...(file.purging ? [] : [['Restore', () => changeFile(file, 'restore')]]),
+      ['Delete permanently', () => changeFile(file, 'delete')]
+    ] : [
       ['Rename', () => changeFile(file, 'rename')],
       ['Download', () => window.location.assign(download)],
-      ['Make a copy', () => changeFile(file, 'copy')]
+      ['Make a copy', () => changeFile(file, 'copy')],
+      ['Share', () => changeFile(file, 'share')],
+      ['Move to bin', () => changeFile(file, 'trash')]
     ];
-    actions.push(['Share', () => changeFile(file, 'share')]);
-    actions.push(['Move to bin', () => changeFile(file, 'trash')]);
     const account = file.split ? (file.driveEmails || []).join(', ') || 'Multiple Drives' : file.account.email;
     const item = row(icon + ' ' + file.name, account, actionsMenu(file.name, actions));
     item.className = 'file-item';
-    if (view === 'grid' && file.hasThumbnail) {
+    if (!showingBin && view === 'grid' && file.hasThumbnail) {
       const preview = document.createElement('img');
       preview.className = 'file-preview';
       preview.alt = '';
@@ -265,10 +301,13 @@ function renderFiles() {
     }
     return item;
   });
-  list.replaceChildren(...folderRows, ...fileRows);
+  byId('folders').replaceChildren(...folderRows);
+  list.replaceChildren(...fileRows);
+  byId('folder-section').hidden = !folderRows.length;
+  byId('file-section').hidden = !fileRows.length;
   const empty = byId('empty');
   empty.hidden = folderRows.length + fileRows.length > 0;
-  empty.textContent = query ? 'No matching files or folders.' : 'No files uploaded here yet.';
+  empty.textContent = query ? 'No matching files or folders.' : showingBin ? 'No items in this part of the bin.' : 'No files uploaded here yet.';
 }
 
 byId('search').oninput = renderFiles;

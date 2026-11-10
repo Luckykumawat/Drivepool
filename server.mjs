@@ -109,8 +109,8 @@ async function listFiles(token, user) {
   let pageToken;
   do {
     const params = new URLSearchParams({
-      q: `trashed = false and appProperties has { key='drivepoolOwner' and value='${user}' }`,
-      fields: 'nextPageToken,files(id,name,size,createdTime,mimeType,description,hasThumbnail)', pageSize: '100'
+      q: `appProperties has { key='drivepoolOwner' and value='${user}' }`,
+      fields: 'nextPageToken,files(id,name,size,createdTime,mimeType,description,hasThumbnail,trashed)', pageSize: '100'
     });
     if (pageToken) params.set('pageToken', pageToken);
     const response = await google(driveApi + '/files?' + params, {
@@ -341,7 +341,7 @@ async function fileAction(req, res, user, connections, connectionId, id) {
   }
   const action = fields?.action;
   const name = typeof fields?.name === 'string' ? fields.name.trim() : '';
-  if (!['rename', 'copy', 'trash', 'share'].includes(action)) fail(400, 'Invalid file action.');
+  if (!['rename', 'copy', 'trash', 'share', 'restore', 'delete'].includes(action)) fail(400, 'Invalid file action.');
   if (action === 'rename' && (!name || name.length > 255 || /[\x00-\x1f\x7f]/.test(name))) {
     fail(400, 'Enter a valid file name.');
   }
@@ -349,6 +349,7 @@ async function fileAction(req, res, user, connections, connectionId, id) {
   if (action === 'share' && (!emailAddress || emailAddress.length > 254 ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress))) fail(400, 'Enter a valid recipient email.');
 
+  const fromBin = action === 'restore' || action === 'delete';
   const lock = user + '/' + connectionId + '/' + id;
   if (activeFileActions.has(lock)) fail(409, 'Another action is already running for this file.');
   activeFileActions.add(lock);
@@ -357,7 +358,8 @@ async function fileAction(req, res, user, connections, connectionId, id) {
       const [record] = await query('SELECT manifest FROM @split_files WHERE id=? AND user_id=?', id, user);
       if (!record) fail(404, 'File not found.');
       const file = JSON.parse(record.manifest);
-      if (file.trashed) fail(404, 'File is in the bin.');
+      if (Boolean(file.trashed) !== fromBin) fail(409, 'The file changed. Refresh and try again.');
+      if (file.purging && action === 'restore') fail(409, 'Permanent deletion already started. Retry Delete permanently.');
       if (action === 'share') {
         const viewers = [...new Set([...(file.viewers || []), emailAddress.toLowerCase()])];
         if (viewers.length > 100) fail(409, 'This file has reached its sharing limit.');
@@ -379,14 +381,32 @@ async function fileAction(req, res, user, connections, connectionId, id) {
         const info = await google(target + '?fields=size,md5Checksum,appProperties,trashed', {
           headers: { Authorization: 'Bearer ' + token }
         });
+        if (info.status === 404 && action === 'delete') return null;
         if (!info.ok) fail(409, 'A file part is unavailable.');
         const metadata = await info.json();
-        if (metadata.trashed || metadata.appProperties?.drivepoolSplit !== id ||
+        if ((action !== 'restore' && action !== 'trash' && Boolean(metadata.trashed) !== fromBin) ||
+            metadata.appProperties?.drivepoolSplit !== id ||
             Number(metadata.size) !== part.size || metadata.md5Checksum !== part.md5) {
           fail(409, 'A file part is missing or has changed.');
         }
-        return { part, token, target };
+        return { part, token, target, trashed: Boolean(metadata.trashed) };
       }));
+      if (fromBin) {
+        if (action === 'delete') {
+          if (!file.purging) await query('UPDATE @split_files SET manifest=? WHERE id=? AND user_id=?',
+            JSON.stringify({ ...file, purging: true }), id, user);
+          for (const source of sources.filter(Boolean)) await deleteDriveFile(source.target, source.token, true);
+          await query('DELETE FROM @split_files WHERE id=? AND user_id=?', id, user);
+        } else {
+          for (const source of sources) {
+            if (source.trashed) await driveMutation(source.target, source.token, 'PATCH', { trashed: false });
+          }
+          await query('UPDATE @split_files SET manifest=? WHERE id=? AND user_id=?',
+            JSON.stringify({ ...file, trashed: false }), id, user);
+        }
+        return json(res, 200, { ok: true });
+      }
+
       const changes = [];
       const copyId = randomUUID();
       let saving = false;
@@ -394,6 +414,7 @@ async function fileAction(req, res, user, connections, connectionId, id) {
         for (const [index, source] of sources.entries()) {
           const { part, token, target } = source;
           if (action === 'trash') {
+            if (source.trashed) continue;
             await driveMutation(target, token, 'PATCH', { trashed: true });
             changes.push({ token, target });
           } else {
@@ -434,7 +455,10 @@ async function fileAction(req, res, user, connections, connectionId, id) {
     });
     if (!info.ok) fail(404, 'File not found.');
     const file = await info.json();
-    if (file.trashed || file.appProperties?.drivepoolOwner !== user) fail(404, 'File not found.');
+    if (file.appProperties?.drivepoolOwner !== user) fail(404, 'File not found.');
+    if (Boolean(file.trashed) !== fromBin) fail(409, 'The file changed. Refresh and try again.');
+    if (action === 'restore') await driveMutation(target, token, 'PATCH', { trashed: false });
+    if (action === 'delete') await deleteDriveFile(target, token);
     if (action === 'rename') await driveMutation(target, token, 'PATCH', { name });
     if (action === 'trash') await driveMutation(target, token, 'PATCH', { trashed: true });
     if (action === 'copy') {
@@ -450,6 +474,14 @@ async function fileAction(req, res, user, connections, connectionId, id) {
     return json(res, 200, { ok: true });
   } finally {
     activeFileActions.delete(lock);
+  }
+}
+
+async function deleteDriveFile(target, token, allowMissing = false) {
+  const response = await google(target, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
+  if (!response.ok && !(allowMissing && response.status === 404)) {
+    await response.body?.cancel();
+    fail(502, 'Google Drive could not permanently delete this file. Refresh and retry.');
   }
 }
 
@@ -562,7 +594,7 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
         return { ...file, id, split: true, partCount: parts.length, driveEmails: parts.map(part =>
           connections.find(connection => connection.id === part.connectionId)?.email).filter(Boolean) };
       });
-      return json(res, 200, { accounts, splitFiles: splitFiles.filter(file => !file.trashed) });
+      return json(res, 200, { accounts, splitFiles });
     }
     if (path === '/api/upload' && req.method === 'POST') return await upload(req, res, url, user, connections);
     const actionMatch = path.match(/^\/api\/file-action\/([\w-]+)\/([\w-]+)$/);

@@ -41,9 +41,13 @@
     </div>
     <p id="message" class="notice" role="status" hidden></p>
       <section class="card panel" id="library" hidden>
-        <div class="panel-heading"><div><h2>Your files</h2><p>Large files can span multiple Drives and download as one file.</p></div><div class="actions"><button id="choose-folder">Upload folder</button><button class="primary" id="choose">Upload files</button></div></div>
+        <div class="panel-heading"><div><h2 id="library-title">Your files</h2><p id="library-description">Manage files from all your connected Drives.</p></div><div class="actions" id="upload-actions"><button id="choose-folder">Upload folder</button><button class="primary" id="choose">Upload files</button></div></div>
         <input type="file" id="file" multiple hidden>
         <input type="file" id="folder" webkitdirectory multiple hidden>
+        <div class="library-tabs" role="group" aria-label="File location">
+          <button id="show-library" aria-pressed="true">My files</button>
+          <button id="show-bin" aria-pressed="false">Bin</button>
+        </div>
         <div class="file-toolbar">
           <input type="search" id="search" aria-label="Search files and folders" placeholder="Search files and folders">
           <div class="actions" role="group" aria-label="File layout">
@@ -54,7 +58,14 @@
         <nav id="breadcrumbs" aria-label="Current folder"></nav>
         <progress id="progress" max="100" aria-label="Upload progress" hidden></progress>
         <p id="empty" class="empty-state" hidden>No files uploaded yet.</p>
-        <ul id="files"></ul>
+        <section id="folder-section" class="library-section" hidden>
+          <h3>Folders</h3>
+          <ul id="folders"></ul>
+        </section>
+        <section id="file-section" class="library-section" hidden>
+          <h3>Files</h3>
+          <ul id="files"></ul>
+        </section>
       </section>
   </main>
   <dialog id="install-guide">

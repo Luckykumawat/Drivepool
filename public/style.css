@@ -124,3 +124,15 @@ button:hover:not(:disabled), .download:hover { background-color: #f1eaff; border
 #files[data-view="grid"] .file-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; }
 #files[data-view="grid"] .file-preview { grid-column: 1 / -1; grid-row: 2; }
 #files[data-view="grid"] .folder-item { flex-direction: row; align-items: center; gap: 4px; padding: 4px 8px; }
+
+.library-tabs { display: flex; gap: 6px; margin-top: 16px; }
+.library-tabs button { padding: 8px 15px; }
+.library-section { margin-top: 20px; }
+.library-section h3 { margin: 0; color: #483591; font-size: .85rem; font-weight: 750; }
+#folders[data-view="grid"] { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 205px), 1fr)); gap: 10px; }
+#folders[data-view="grid"] .folder-item { min-width: 0; min-height: 46px; padding: 3px 7px; gap: 4px; background: #f1eaff; border: 1px solid #e5dff2; border-radius: 10px; }
+#folders[data-view="grid"] .folder-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#files[data-view="grid"] .file-item { background: #fcfaff; }
+#files[data-view="grid"] .file-item:hover { border-color: #bdb0ed; }
+.action-panel button { white-space: normal; }
+.action-panel { min-width: 156px; max-width: min(230px, 70vw); }
