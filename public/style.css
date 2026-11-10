@@ -274,3 +274,41 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
 
 :root[data-theme="forest-lime"] .eyebrow { padding-inline: 0; }
 :root[data-theme="forest-lime"] .primary { border-radius: 10px; }
+
+#storage-drawer {
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: min(430px, 100%);
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 0;
+  border-width: 0 0 0 1px;
+  background: var(--page);
+  overscroll-behavior: contain;
+}
+#storage-drawer[open] { animation: storage-slide-in .22s ease-out; }
+@keyframes storage-slide-in { from { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  #storage-drawer[open] { animation: none; }
+}
+#storage-drawer .metrics { grid-template-columns: 1fr; margin-top: 16px; }
+#drive-connect { margin-top: 16px; }
+.library-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 12px;
+}
+.library-controls .library-tabs,
+.library-controls .file-toolbar { margin: 0; }
+.library-controls .file-toolbar {
+  flex-wrap: wrap;
+  padding: 0;
+  border: 0;
+  gap: 8px;
+  justify-content: flex-start;
+}
+.library-controls #search { width: min(200px, 100%); flex: 0 1 auto; }
+#bin-tools .danger { color: var(--danger); }

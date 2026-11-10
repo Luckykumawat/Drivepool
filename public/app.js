@@ -269,6 +269,8 @@ function syncSelection() {
   }
   const allVisibleSelected = visibleSelectionFiles.length > 0 &&
     visibleSelectionFiles.every(file => selectedFiles.has(fileKey(file)));
+  byId('selection-actions').hidden = !selected.length;
+  byId('bin-tools').hidden = !showingBin;
   byId('select-all-files').textContent = allVisibleSelected ? 'Deselect all' : 'Select all';
   byId('select-all-files').disabled = bulkBusy || !visibleSelectionFiles.length;
   byId('download-selected').hidden = showingBin;
@@ -571,6 +573,9 @@ function sendFile(file, folder, completed, total) {
   });
 }
 
+const storageDrawer = byId('storage-drawer');
+byId('open-storage').onclick = () => storageDrawer.showModal();
+
 byId('refresh').onclick = () => refresh().catch(error => message(error.message));
 upload.onclick = () => chooser.click();
 const folderChooser = byId('folder');
@@ -670,7 +675,9 @@ try {
   }
   if (outcome) history.replaceState(null, '', '/');
   byId('logout').hidden = !signedIn;
-  byId('dashboard').hidden = !signedIn;
+  byId('open-storage').hidden = !signedIn;
+  byId('welcome').hidden = signedIn;
+  if (signedIn) byId('drive-connect').append(connect);
   byId('library').hidden = !signedIn;
   if (signedIn) await refresh();
 } catch (error) {

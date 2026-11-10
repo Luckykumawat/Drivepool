@@ -8,8 +8,8 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png?v=3">
   <link rel="icon" href="/icon-192.png?v=3">
-  <link rel="stylesheet" href="/style.css?v=8">
-  <script src="/app.js?v=8" type="module"></script>
+  <link rel="stylesheet" href="/style.css?v=9">
+  <script src="/app.js?v=9" type="module"></script>
 </head>
 <body>
   <header class="shell top">
@@ -25,35 +25,26 @@
           <option value="forest-lime">Forest Lime</option>
         </select>
       </label>
+      <button id="open-storage" type="button" aria-haspopup="dialog" aria-controls="storage-drawer" hidden>Storage details</button>
       <button id="install" type="button">Install app</button>
       <form id="logout" action="/api/logout" method="post" hidden><button>Sign out</button></form>
     </div>
   </header>
   <main class="shell">
-    <div class="overview">
+    <div class="overview" id="welcome">
     <section class="hero">
       <span class="eyebrow">PERSONAL CLOUD WORKSPACE</span>
       <h1>Your drives, together.</h1>
       <p>Connect your Google Drives and manage the files you upload from one place.</p>
       <button class="primary" id="connect" type="button" disabled>Connect Google Drive</button>
     </section>
-    <div id="dashboard" hidden>
-      <section class="metrics" aria-label="Storage summary">
-        <div class="card"><span id="free-label">Total free space</span><strong id="free">—</strong></div>
-        <div class="card"><span>Largest single upload</span><strong id="largest">—</strong><small>Based on available Drive space. Large files can span Drives.</small></div>
-        <div class="card"><span>Connected drives</span><strong id="count">—</strong></div>
-      </section>
-      <section class="card panel">
-        <div class="panel-heading"><div><h2>Connected drives</h2></div><button id="refresh">Refresh</button></div>
-        <ul id="accounts"></ul>
-      </section>
-    </div>
     </div>
     <p id="message" class="notice" role="status" hidden></p>
       <section class="card panel" id="library" hidden>
         <div class="panel-heading"><div><h2 id="library-title">Your files</h2><p id="library-description">Manage files from all your connected Drives.</p></div><div class="actions" id="upload-actions"><button id="choose-folder">Upload folder</button><button class="primary" id="choose">Upload files</button></div></div>
         <input type="file" id="file" multiple hidden>
         <input type="file" id="folder" webkitdirectory multiple hidden>
+        <div class="library-controls">
         <div class="library-tabs" role="group" aria-label="File location">
           <button id="show-library" aria-pressed="true">My files</button>
           <button id="show-bin" aria-pressed="false">Bin</button>
@@ -65,13 +56,16 @@
             <button id="grid-view" aria-pressed="true">Grid</button>
           </div>
         </div>
-        <div id="selection-actions" class="bin-actions" aria-label="Bulk file actions">
+        </div>
+        <div id="selection-actions" hidden class="bin-actions" aria-label="Bulk file actions">
           <button id="select-all-files" type="button">Select all</button>
           <span id="bin-selection-count" aria-live="polite"></span>
           <button id="download-selected" type="button">Download selected</button>
           <button id="move-selected-to-bin" type="button" class="danger">Move selected to bin</button>
           <button id="restore-selected" type="button" hidden>Restore selected</button>
           <button id="delete-selected" type="button" hidden class="danger">Delete selected permanently</button>
+        </div>
+        <div class="bin-actions" id="bin-tools" hidden>
           <button id="empty-bin" type="button" hidden class="danger">Empty bin</button>
         </div>
         <form id="archive-form" action="/api/download-zip" method="post" hidden>
@@ -90,6 +84,24 @@
         </section>
       </section>
   </main>
+  <dialog id="storage-drawer" aria-labelledby="storage-title">
+    <div class="panel-heading">
+      <h2 id="storage-title">Storage details</h2>
+      <form method="dialog"><button autofocus>Close</button></form>
+    </div>
+    <div id="dashboard">
+      <section class="metrics" aria-label="Storage summary">
+        <div class="card"><span id="free-label">Total free space</span><strong id="free">—</strong></div>
+        <div class="card"><span>Largest single upload</span><strong id="largest">—</strong><small>Based on available Drive space. Large files can span Drives.</small></div>
+        <div class="card"><span>Connected drives</span><strong id="count">—</strong></div>
+      </section>
+      <section class="card panel">
+        <div class="panel-heading"><div><h2>Connected drives</h2></div><button id="refresh">Refresh</button></div>
+        <ul id="accounts"></ul>
+      </section>
+    </div>
+    <div id="drive-connect"></div>
+  </dialog>
   <dialog id="install-guide">
     <h2>Install Drivepool</h2>
     <p>On Android, open Chrome’s menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</p>
