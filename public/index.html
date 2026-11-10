@@ -20,13 +20,13 @@
     </div>
   </header>
   <main class="shell">
+    <div class="overview">
     <section class="hero">
       <span class="eyebrow">PERSONAL CLOUD WORKSPACE</span>
       <h1>Your drives, together.</h1>
       <p>Connect your Google Drives and manage the files you upload from one place.</p>
       <button class="primary" id="connect" type="button" disabled>Connect Google Drive</button>
     </section>
-    <p id="message" class="notice" role="status" hidden></p>
     <div id="dashboard" hidden>
       <section class="metrics" aria-label="Storage summary">
         <div class="card"><span id="free-label">Total free space</span><strong id="free">—</strong></div>
@@ -37,14 +37,25 @@
         <div class="panel-heading"><div><h2>Connected drives</h2><p>Free space accounts for usage across Google services. Google’s 15 GB allowance is shown here as 15 GiB (1 GiB = 1,073,741,824 bytes).</p></div><button id="refresh">Refresh</button></div>
         <ul id="accounts"></ul>
       </section>
-      <section class="card panel">
-        <div class="panel-heading"><div><h2>Your files</h2><p>New uploads go to a connected Drive with room for the whole file.</p></div><button class="primary" id="choose">Upload file</button></div>
-        <input type="file" id="file" hidden>
+    </div>
+    </div>
+    <p id="message" class="notice" role="status" hidden></p>
+      <section class="card panel" id="library" hidden>
+        <div class="panel-heading"><div><h2>Your files</h2><p>New uploads go to a connected Drive with room for the whole file.</p></div><div class="actions"><button id="choose-folder">Upload folder</button><button class="primary" id="choose">Upload files</button></div></div>
+        <input type="file" id="file" multiple hidden>
+        <input type="file" id="folder" webkitdirectory multiple hidden>
+        <div class="file-toolbar">
+          <input type="search" id="search" aria-label="Search files and folders" placeholder="Search files and folders">
+          <div class="actions" role="group" aria-label="File layout">
+            <button id="list-view" aria-pressed="false">List</button>
+            <button id="grid-view" aria-pressed="true">Grid</button>
+          </div>
+        </div>
+        <nav id="breadcrumbs" aria-label="Current folder"></nav>
         <progress id="progress" max="100" aria-label="Upload progress" hidden></progress>
         <p id="empty" hidden>No files uploaded yet.</p>
         <ul id="files"></ul>
       </section>
-    </div>
   </main>
   <dialog id="install-guide">
     <h2>Install Drivepool</h2>

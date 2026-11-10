@@ -110,7 +110,7 @@ async function listFiles(token, user) {
   do {
     const params = new URLSearchParams({
       q: `trashed = false and appProperties has { key='drivepoolOwner' and value='${user}' }`,
-      fields: 'nextPageToken,files(id,name,size,createdTime)', pageSize: '100'
+      fields: 'nextPageToken,files(id,name,size,createdTime,mimeType,description,hasThumbnail)', pageSize: '100'
     });
     if (pageToken) params.set('pageToken', pageToken);
     const response = await google(driveApi + '/files?' + params, {
@@ -118,7 +118,10 @@ async function listFiles(token, user) {
     });
     if (!response.ok) fail(502, 'Could not list Drive files.');
     const page = await response.json();
-    files.push(...page.files);
+    files.push(...page.files.map(({ description, ...file }) => ({
+      ...file,
+      folder: description?.startsWith('Drivepool folder: ') ? description.slice(18) : ''
+    })));
     pageToken = page.nextPageToken;
   } while (pageToken);
   return files;
@@ -126,6 +129,13 @@ async function listFiles(token, user) {
 
 async function upload(req, res, url, user, connections) {
   const name = url.searchParams.get('name')?.trim();
+  const folder = url.searchParams.get('folder') || '';
+  if (folder.length > 1000 || folder.split('/').some(part => part === '.' || part === '..') ||
+      /[\x00-\x1f\x7f]/.test(folder)) fail(400, 'Invalid folder path.');
+  const type = url.searchParams.get('type') || '';
+  const mime = /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/i.test(type) &&
+    !type.toLowerCase().startsWith('application/vnd.google-apps.')
+    ? type : 'application/octet-stream';
   const size = Number(req.headers['content-length']);
   if (!name || name.length > 255 || /[\x00-\x1f\x7f]/.test(name) ||
       !Number.isSafeInteger(size) || size < 0) fail(400, 'A valid file name and size are required.');
@@ -147,9 +157,9 @@ async function upload(req, res, url, user, connections) {
       method: 'POST',
       headers: {
         Authorization: 'Bearer ' + token, 'Content-Type': 'application/json',
-        'X-Upload-Content-Length': String(size), 'X-Upload-Content-Type': 'application/octet-stream'
+        'X-Upload-Content-Length': String(size), 'X-Upload-Content-Type': mime
       },
-      body: JSON.stringify({ name, appProperties: properties(user) })
+      body: JSON.stringify({ name, appProperties: properties(user), ...(folder && { description: 'Drivepool folder: ' + folder }) })
     });
     if (!start.ok || !start.headers.get('location')) fail(502, 'Google could not start the upload.');
     const destination = new URL(start.headers.get('location'));
@@ -161,7 +171,7 @@ async function upload(req, res, url, user, connections) {
     try {
       const finish = await google(destination, {
         method: 'PUT', signal: AbortSignal.any([abort.signal, uploadTimeout]), duplex: 'half',
-        headers: { 'Content-Length': String(size), 'Content-Type': 'application/octet-stream' },
+        headers: { 'Content-Length': String(size), 'Content-Type': mime },
         body: size ? req : undefined
       });
       if (!finish.ok) fail(502, 'Google could not complete the upload. Refresh and check before retrying.');
@@ -279,16 +289,30 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
       return json(res, 200, { accounts });
     }
     if (path === '/api/upload' && req.method === 'POST') return await upload(req, res, url, user, connections);
-    const match = path.match(/^\/api\/download\/([\w-]+)\/([\w-]+)$/);
+    const match = path.match(/^\/api\/(download|thumbnail)\/([\w-]+)\/([\w-]+)$/);
     if (match && req.method === 'GET') {
-      const connection = connections.find(account => account.id === match[1]);
+      const connection = connections.find(account => account.id === match[2]);
       if (!connection) fail(404, 'File not found.');
       const headers = { Authorization: 'Bearer ' + await access(connection) };
-      const target = driveApi + '/files/' + match[2];
-      const info = await google(target + '?fields=name,appProperties,trashed', { headers });
+      const target = driveApi + '/files/' + match[3];
+      const info = await google(target + '?fields=name,appProperties,trashed,thumbnailLink', { headers });
       if (!info.ok) fail(404, 'File not available.');
       const file = await info.json();
       if (file.trashed || file.appProperties?.drivepoolOwner !== user) fail(404, 'File not found.');
+      if (match[1] === 'thumbnail') {
+        if (!file.thumbnailLink) fail(404, 'Preview unavailable.');
+        const thumbnail = new URL(file.thumbnailLink);
+        if (thumbnail.protocol !== 'https:' || thumbnail.port ||
+            !thumbnail.hostname.endsWith('.googleusercontent.com')) fail(404, 'Preview unavailable.');
+        const preview = await google(thumbnail, { headers });
+        const contentType = preview.headers.get('content-type');
+        if (!preview.ok || !preview.body || !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(contentType)) {
+          await preview.body?.cancel();
+          fail(404, 'Preview unavailable.');
+        }
+        res.writeHead(200, { 'Content-Type': contentType });
+        return await pipeline(Readable.fromWeb(preview.body), res);
+      }
       const controller = new AbortController();
       res.once('close', () => controller.abort());
       const media = await google(target + '?alt=media', { headers, signal: controller.signal });

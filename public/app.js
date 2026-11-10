@@ -51,30 +51,123 @@ async function refresh() {
       row(account.email, account.unavailable ? 'Some account data is unavailable. Refresh or reconnect.' : 'Google Drive',
         document.createTextNode(account.free == null ? '—' : bytes(account.free) + ' free'))
     ));
-    const files = accounts.flatMap(account => account.files.map(file => ({ ...file, account })))
+    files = accounts.flatMap(account => account.files.map(file => ({ ...file, account })))
       .sort((a, b) => String(b.createdTime).localeCompare(String(a.createdTime)));
-    byId('files').replaceChildren(...files.map(file => {
-      const link = document.createElement('a');
-      link.className = 'download';
-      link.href = '/api/download/' + encodeURIComponent(file.account.id) + '/' + encodeURIComponent(file.id);
-      link.textContent = 'Download';
-      link.setAttribute('aria-label', 'Download ' + file.name);
-      return row(file.name, bytes(file.size) + ' · ' + file.account.email, link);
-    }));
-    byId('empty').hidden = files.length > 0;
+    renderFiles();
   } finally {
     button.disabled = false;
   }
 }
 
-function sendFile(file) {
+let files = [];
+let currentFolder = '';
+let view = 'grid';
+try {
+  if (localStorage.getItem('drivepool-view') === 'list') view = 'list';
+} catch {}
+
+function fileKind(file) {
+  const type = file.mimeType || '';
+  if (type.startsWith('image/') || /\.(png|jpe?g|gif|webp|heic|svg|avif|bmp|tiff?)$/i.test(file.name)) return ['Image', '🖼'];
+  if (type.includes('spreadsheet') || /\.(xlsx?|csv|ods)$/i.test(file.name)) return ['Spreadsheet', '▦'];
+  if (/\.pdf$/i.test(file.name) || type === 'application/pdf') return ['PDF', '▤'];
+  if (type.startsWith('text/') || /\.(docx?|odt|txt|rtf|pptx?)$/i.test(file.name)) return ['Document', '▤'];
+  if (type.startsWith('video/') || /\.(mp4|mov|mkv|webm)$/i.test(file.name)) return ['Video', '▶'];
+  return ['File', '▧'];
+}
+
+function openFolder(path) {
+  currentFolder = path;
+  byId('search').value = '';
+  renderFiles();
+}
+
+function renderFiles() {
+  const query = byId('search').value.trim().toLowerCase();
+  const list = byId('files');
+  list.dataset.view = view;
+  byId('list-view').setAttribute('aria-pressed', String(view === 'list'));
+  byId('grid-view').setAttribute('aria-pressed', String(view === 'grid'));
+
+  const breadcrumbs = byId('breadcrumbs');
+  breadcrumbs.replaceChildren();
+  const parts = currentFolder ? currentFolder.split('/') : [];
+  for (const [index, name] of ['All files', ...parts].entries()) {
+    const button = document.createElement('button');
+    button.textContent = name;
+    button.onclick = () => openFolder(parts.slice(0, index).join('/'));
+    breadcrumbs.append(button);
+  }
+
+  const folders = new Set();
+  const visibleFiles = [];
+  const prefix = currentFolder ? currentFolder + '/' : '';
+  for (const file of files) {
+    const path = file.folder || '';
+    if (query) {
+      if ((path + '/' + file.name).toLowerCase().includes(query)) visibleFiles.push(file);
+      const segments = path.split('/');
+      for (const [index, segment] of segments.entries()) {
+        if (segment && segment.toLowerCase().includes(query)) folders.add(segments.slice(0, index + 1).join('/'));
+      }
+    } else if (path === currentFolder) {
+      visibleFiles.push(file);
+    } else if (path.startsWith(prefix)) {
+      folders.add(prefix + path.slice(prefix.length).split('/')[0]);
+    }
+  }
+
+  const folderRows = [...folders].sort().map(path => {
+    const button = document.createElement('button');
+    button.textContent = 'Open';
+    button.setAttribute('aria-label', 'Open folder ' + path);
+    button.onclick = () => openFolder(path);
+    return row('📁 ' + path.split('/').at(-1), query ? 'Folder · ' + path : 'Folder', button);
+  });
+  const fileRows = visibleFiles.map(file => {
+    const [kind, icon] = fileKind(file);
+    const id = encodeURIComponent(file.account.id) + '/' + encodeURIComponent(file.id);
+    const link = document.createElement('a');
+    link.className = 'download';
+    link.href = '/api/download/' + id;
+    link.textContent = 'Download';
+    link.setAttribute('aria-label', 'Download ' + file.name);
+    const detail = [kind, bytes(file.size), file.account.email, query && file.folder].filter(Boolean).join(' · ');
+    const item = row(icon + ' ' + file.name, detail, link);
+    if (view === 'grid' && file.hasThumbnail) {
+      const preview = document.createElement('img');
+      preview.className = 'file-preview';
+      preview.alt = '';
+      preview.loading = 'lazy';
+      preview.onerror = () => preview.remove();
+      preview.src = '/api/thumbnail/' + id;
+      item.prepend(preview);
+    }
+    return item;
+  });
+  list.replaceChildren(...folderRows, ...fileRows);
+  const empty = byId('empty');
+  empty.hidden = folderRows.length + fileRows.length > 0;
+  empty.textContent = query ? 'No matching files or folders.' : 'No files uploaded here yet.';
+}
+
+byId('search').oninput = renderFiles;
+for (const layout of ['grid', 'list']) {
+  byId(layout + '-view').onclick = () => {
+    view = layout;
+    try { localStorage.setItem('drivepool-view', view); } catch {}
+    renderFiles();
+  };
+}
+
+function sendFile(file, folder, completed, total) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/upload?' + new URLSearchParams({ name: file.name }));
+    xhr.open('POST', '/api/upload?' + new URLSearchParams({ name: file.name, folder, type: file.type }));
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
     xhr.responseType = 'json';
     xhr.upload.onprogress = event => {
-      if (event.lengthComputable) progress.value = event.loaded / event.total * 100;
+      if (event.lengthComputable) progress.value = (completed + event.loaded) / total * 100;
     };
     xhr.onload = () => {
       if (xhr.status === 201) resolve(xhr.response);
@@ -87,25 +180,48 @@ function sendFile(file) {
 
 byId('refresh').onclick = () => refresh().catch(error => message(error.message));
 upload.onclick = () => chooser.click();
-chooser.onchange = async () => {
-  const [file] = chooser.files;
-  if (!file) return;
-  upload.disabled = true;
+const folderChooser = byId('folder');
+const uploadFolder = byId('choose-folder');
+uploadFolder.onclick = () => folderChooser.click();
+
+async function uploadSelection(event) {
+  const input = event.currentTarget;
+  const selected = Array.from(input.files);
+  if (!selected.length) return;
+  upload.disabled = uploadFolder.disabled = true;
   progress.value = 0;
   progress.hidden = false;
-  message('Uploading ' + file.name + '…');
+  const total = selected.reduce((sum, file) => sum + file.size, 0) || 1;
+  const destinationFolder = currentFolder;
+  let completed = 0;
+  let count = 0;
+  let account;
+  let uploadError;
   try {
-    const result = await sendFile(file);
-    message('Saved to ' + result.account + '.');
-    await refresh();
+    for (const file of selected) {
+      const relativeFolder = file.webkitRelativePath.split('/').slice(0, -1).join('/');
+      const folder = [destinationFolder, relativeFolder].filter(Boolean).join('/');
+      message('Uploading ' + (count + 1) + ' of ' + selected.length + ' · ' + file.name + '…');
+      ({ account } = await sendFile(file, folder, completed, total));
+      completed += file.size;
+      count++;
+    }
   } catch (error) {
-    message(error.message);
+    uploadError = error.message;
+  }
+  try {
+    await refresh();
+    if (uploadError) message(count + ' of ' + selected.length + ' files saved. ' + uploadError);
+    else message(count === 1 ? 'Saved to ' + account + '.' : count + ' files saved.');
+  } catch (error) {
+    message(count + ' files saved. Refresh failed. ' + (uploadError || error.message));
   } finally {
-    chooser.value = '';
-    upload.disabled = false;
+    input.value = '';
+    upload.disabled = uploadFolder.disabled = false;
     progress.hidden = true;
   }
-};
+}
+chooser.onchange = folderChooser.onchange = uploadSelection;
 
 let installPrompt;
 window.addEventListener('beforeinstallprompt', event => {
@@ -160,6 +276,7 @@ try {
   if (outcome) history.replaceState(null, '', '/');
   byId('logout').hidden = !signedIn;
   byId('dashboard').hidden = !signedIn;
+  byId('library').hidden = !signedIn;
   if (signedIn) await refresh();
 } catch (error) {
   message(error.message);
