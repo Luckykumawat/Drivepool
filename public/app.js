@@ -4,7 +4,9 @@ const themeColor = document.querySelector('meta[name="theme-color"]');
 const themeColors = new Map([
   ['amber', '#f8f4eb'],
   ['ocean', '#f1f7ff'],
-  ['lavender', '#f7f3fc']
+  ['lavender', '#f7f3fc'],
+  ['classic-green', '#f4f7f1'],
+  ['classic-blue', '#f8fafd']
 ]);
 
 function applyTheme(theme) {
