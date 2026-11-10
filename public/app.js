@@ -1,4 +1,23 @@
 const byId = id => document.getElementById(id);
+const themeToggle = byId('theme-toggle');
+const themeColor = document.querySelector('meta[name="theme-color"]');
+
+function applyTheme(dark) {
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  themeToggle.setAttribute('aria-pressed', String(dark));
+  themeColor.content = dark ? '#111827' : '#f8f4eb';
+}
+
+let savedTheme;
+try { savedTheme = localStorage.getItem('drivepool-theme'); } catch {}
+applyTheme(savedTheme === 'dark');
+
+themeToggle.addEventListener('click', () => {
+  const dark = document.documentElement.dataset.theme !== 'dark';
+  applyTheme(dark);
+  try { localStorage.setItem('drivepool-theme', dark ? 'dark' : 'light'); } catch {}
+});
+
 const notice = byId('message');
 const chooser = byId('file');
 const upload = byId('choose');
