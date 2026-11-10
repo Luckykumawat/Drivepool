@@ -357,11 +357,18 @@ function setupSelectionCard(card, rowKey, name, items, act) {
   });
 }
 
-byId('clear-selection').onclick = () => {
+function clearSelection() {
+  if (bulkBusy || !selectedFiles.size) return;
   selectedFiles.clear();
   selectionAnchor = null;
   syncSelection();
-};
+}
+
+byId('clear-selection').onclick = clearSelection;
+document.querySelector('.workspace-main').addEventListener('click', event => {
+  if (event.target.closest('.file-item, .folder-item, button, input, a, label, summary')) return;
+  clearSelection();
+});
 
 byId('select-all-files').onclick = () => {
   const keys = visibleSelectionFiles.map(fileKey);
