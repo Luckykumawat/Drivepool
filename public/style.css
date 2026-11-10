@@ -487,8 +487,8 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
   gap: 14px;
 }
 #folders[data-view="grid"] .folder-item { min-height: 54px; }
-#files[data-view="grid"] .file-item { padding: 10px; padding-left: 32px; }
-#files[data-view="grid"] .file-preview { width: calc(100% + 22px); margin-left: -22px; height: 138px; }
+#files[data-view="grid"] .file-item { padding: 10px; }
+#files[data-view="grid"] .file-preview { width: 100%; height: 138px; }
 #storage-drawer #connect { margin-top: 16px; }
 
 @media (max-width: 760px) {
@@ -511,3 +511,20 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
 .type-icon-folder { fill: #444746; }
 .type-icon-image { fill: #e73b3e; }
 .type-icon-image path + path { fill: white; }
+
+
+#selection-actions { padding: 5px 8px; background: var(--tile); border-radius: 18px; }
+#selection-actions button { border-color: transparent; background: transparent; padding: 6px 10px; }
+#selection-actions button:hover:not(:disabled) { background: var(--hover-tile); }
+#files .file-item, #folders .folder-item { cursor: pointer; user-select: none; }
+#folders .folder-name { padding-inline: 5px; }
+#files[data-view="grid"] .file-item.is-selected,
+#folders[data-view="grid"] .folder-item.is-selected {
+  background: var(--selection);
+  border-color: var(--hover-line);
+  color: var(--selection-ink);
+}
+#files .file-item:focus-visible, #folders .folder-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

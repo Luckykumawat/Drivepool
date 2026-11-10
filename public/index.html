@@ -8,8 +8,8 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png?v=3">
   <link rel="icon" href="/icon-192.png?v=3">
-  <link rel="stylesheet" href="/style.css?v=15">
-  <script src="/app.js?v=15" type="module"></script>
+  <link rel="stylesheet" href="/style.css?v=16">
+  <script src="/app.js?v=16" type="module"></script>
 </head>
 <body>
   <header class="shell top">
@@ -68,8 +68,12 @@
         <input type="file" id="file" multiple hidden>
         <input type="file" id="folder" webkitdirectory multiple hidden>
         <div id="selection-actions" hidden class="bin-actions" aria-label="Bulk file actions">
-          <button id="select-all-files" type="button">Select all</button>
+          <button id="clear-selection" type="button" aria-label="Clear selection" title="Clear selection">×</button>
           <span id="bin-selection-count" aria-live="polite"></span>
+          <button id="share-selected" type="button" hidden>Share</button>
+          <button id="rename-selected" type="button" hidden>Rename</button>
+          <button id="copy-selected" type="button" hidden>Make a copy</button>
+          <button id="select-all-files" type="button">Select all</button>
           <button id="download-selected" type="button">Download selected</button>
           <button id="move-selected-to-bin" type="button" class="danger">Move selected to bin</button>
           <button id="restore-selected" type="button" hidden>Restore selected</button>

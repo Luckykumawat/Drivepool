@@ -115,7 +115,7 @@ let showingBin = false;
 let bulkBusy = false;
 const selectedFiles = new Set();
 let visibleSelectionFiles = [];
-let selectionCheckboxes = [];
+let selectionCards = [];
 let selectionAnchor = null;
 let currentFolder = '';
 
@@ -290,11 +290,20 @@ function fileKey(file) {
 function syncSelection() {
   const available = files.filter(file => Boolean(file.trashed) === showingBin);
   const selected = available.filter(file => selectedFiles.has(fileKey(file)));
-  for (const { checkbox, keys } of selectionCheckboxes) {
+  const selectedCards = selectionCards.filter(({ card, keys }) => {
     const count = keys.filter(key => selectedFiles.has(key)).length;
-    checkbox.checked = count === keys.length;
-    checkbox.indeterminate = count > 0 && count < keys.length;
-    checkbox.disabled = bulkBusy;
+    card.classList.toggle('is-selected', count > 0);
+    card.setAttribute('aria-pressed', count === 0 ? 'false' : count === keys.length ? 'true' : 'mixed');
+    return count === keys.length && count > 0;
+  });
+  const matching = selectedCards.filter(row => row.keys.length === selected.length);
+  const single = matching.find(row => row.rowKey === selectionAnchor)
+    || (matching.length === 1 ? matching[0] : null);
+  for (const action of ['rename', 'copy', 'share']) {
+    const button = byId(action + '-selected');
+    button.hidden = showingBin || !single;
+    button.disabled = bulkBusy;
+    button.onclick = single ? () => single.act(action) : null;
   }
   const allVisibleSelected = visibleSelectionFiles.length > 0 &&
     visibleSelectionFiles.every(file => selectedFiles.has(fileKey(file)));
@@ -310,33 +319,49 @@ function syncSelection() {
   byId('restore-selected').disabled = bulkBusy || !selected.length || selected.some(file => file.purging);
   byId('delete-selected').disabled = bulkBusy || !selected.length;
   byId('empty-bin').disabled = bulkBusy || !available.length;
-  byId('bin-selection-count').textContent = selected.length + ' selected';
+  byId('bin-selection-count').textContent = (single ? 1 : selected.length) + ' selected';
 }
 
-function selectionCheckbox(rowKey, name, items) {
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.className = 'bin-checkbox';
-  checkbox.setAttribute('aria-label', 'Select ' + name);
+function setupSelectionCard(card, rowKey, name, items, act) {
   const keys = items.map(fileKey);
-  selectionCheckboxes.push({ checkbox, keys, rowKey });
-  checkbox.onclick = event => {
-    const clicked = selectionCheckboxes.findIndex(row => row.rowKey === rowKey);
-    const anchor = selectionCheckboxes.findIndex(row => row.rowKey === selectionAnchor);
-    const range = event.shiftKey && anchor !== -1
-      ? selectionCheckboxes.slice(Math.min(anchor, clicked), Math.max(anchor, clicked) + 1)
-      : [selectionCheckboxes[clicked]];
+  card.tabIndex = 0;
+  card.setAttribute('role', 'button');
+  card.setAttribute('aria-label', name);
+  selectionCards.push({ card, keys, rowKey, act });
+  const select = event => {
+    if (bulkBusy) return;
+    const clicked = selectionCards.findIndex(row => row.rowKey === rowKey);
+    const anchor = selectionCards.findIndex(row => row.rowKey === selectionAnchor);
+    const toggle = event.ctrlKey || event.metaKey;
+    const wasSelected = keys.every(key => selectedFiles.has(key));
+    if (!toggle) selectedFiles.clear();
+    const range = event.shiftKey && anchor >= 0
+      ? selectionCards.slice(Math.min(anchor, clicked), Math.max(anchor, clicked) + 1)
+      : [selectionCards[clicked]];
     for (const row of range) {
       for (const key of row.keys) {
-        if (checkbox.checked) selectedFiles.add(key);
-        else selectedFiles.delete(key);
+        if (toggle && !event.shiftKey && wasSelected) selectedFiles.delete(key);
+        else selectedFiles.add(key);
       }
     }
-    selectionAnchor = rowKey;
+    if (!event.shiftKey || anchor < 0) selectionAnchor = rowKey;
     syncSelection();
   };
-  return checkbox;
+  card.addEventListener('click', event => {
+    if (!event.target.closest('.item-actions')) select(event);
+  });
+  card.addEventListener('keydown', event => {
+    if (event.target !== card || !['Enter', ' '].includes(event.key)) return;
+    event.preventDefault();
+    select(event);
+  });
 }
+
+byId('clear-selection').onclick = () => {
+  selectedFiles.clear();
+  selectionAnchor = null;
+  syncSelection();
+};
 
 byId('select-all-files').onclick = () => {
   const keys = visibleSelectionFiles.map(fileKey);
@@ -409,8 +434,16 @@ function downloadZip(items) {
   byId('archive-form').submit();
 }
 
-byId('download-selected').onclick = () => downloadZip(files.filter(file =>
-  !file.trashed && selectedFiles.has(fileKey(file))));
+byId('download-selected').onclick = () => {
+  const items = files.filter(file => !file.trashed && selectedFiles.has(fileKey(file)));
+  if (items.length === 1 && selectionAnchor === fileKey(items[0])) {
+    const [connection, id] = fileKey(items[0]).split('/');
+    const endpoint = items[0].split ? '/api/split-download/' : '/api/download/' + encodeURIComponent(connection) + '/';
+    window.location.assign(endpoint + encodeURIComponent(id));
+  } else {
+    downloadZip(items);
+  }
+};
 
 async function updateFolder(path, action) {
   if (bulkBusy) return;
@@ -501,19 +534,18 @@ function renderFiles() {
   for (const key of selectedFiles) {
     if (!availableKeys.has(key)) selectedFiles.delete(key);
   }
-  selectionCheckboxes = [];
+  selectionCards = [];
   visibleSelectionFiles = available.filter(file =>
     visibleFiles.includes(file) || (file.folder || '').split('/').some((_, index, segments) =>
       folders.has(segments.slice(0, index + 1).join('/'))));
 
   const folderRows = [...folders].sort().map(path => {
     const name = path.split('/').at(-1);
-    const button = document.createElement('button');
+    const button = document.createElement('span');
     button.className = 'folder-name';
     button.textContent = name;
     button.prepend(typeIcon('folder'));
     button.title = path;
-    button.onclick = () => openFolder(path);
     const item = document.createElement('li');
     item.className = 'folder-item';
     const actions = [['Open', () => openFolder(path)]];
@@ -530,8 +562,11 @@ function renderFiles() {
       );
     }
     item.append(button, actionsMenu(name, actions));
-    item.prepend(selectionCheckbox('folder:' + path, 'folder ' + path, available.filter(file =>
-      file.folder === path || file.folder?.startsWith(path + '/'))));
+    setupSelectionCard(item, 'folder:' + path, name, available.filter(file =>
+      file.folder === path || file.folder?.startsWith(path + '/')), action => updateFolder(path, action));
+    item.ondblclick = event => {
+      if (!event.target.closest('.item-actions')) openFolder(path);
+    };
     return item;
   });
   const fileRows = visibleFiles.map(file => {
@@ -556,7 +591,7 @@ function renderFiles() {
     nameLabel.className = 'file-name';
     nameLabel.title = file.name;
     if (kind === 'Image') nameLabel.prepend(typeIcon('image'));
-    item.prepend(selectionCheckbox(fileKey(file), file.name, [file]));
+    setupSelectionCard(item, fileKey(file), file.name, [file], action => changeFile(file, action));
     if (!showingBin && file.hasThumbnail) {
       const preview = document.createElement('img');
       preview.className = 'file-preview';
