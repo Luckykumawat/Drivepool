@@ -68,10 +68,11 @@ async function refresh() {
 
 let files = [];
 let showingBin = false;
-let binBusy = false;
-const selectedBinFiles = new Set();
-let visibleBinFiles = [];
-let binCheckboxes = [];
+let bulkBusy = false;
+const selectedFiles = new Set();
+let visibleSelectionFiles = [];
+let selectionCheckboxes = [];
+let selectionAnchor = null;
 let currentFolder = '';
 let view = 'grid';
 try {
@@ -145,7 +146,7 @@ document.addEventListener('keydown', event => {
 });
 
 async function changeFile(file, action) {
-  if (binBusy) return;
+  if (bulkBusy) return;
   const fields = {};
   if (action === 'rename') {
     const name = window.prompt('New file name', file.name)?.trim();
@@ -183,7 +184,7 @@ async function changeFile(file, action) {
 }
 
 async function changeFolder(path, action) {
-  if (binBusy) return;
+  if (bulkBusy) return;
   const nested = files.filter(file => Boolean(file.trashed) === (action !== 'trash') &&
     (file.folder === path || file.folder?.startsWith(path + '/')));
   const instructions = {
@@ -209,7 +210,8 @@ async function changeFolder(path, action) {
 
 function showBin(value) {
   showingBin = value;
-  selectedBinFiles.clear();
+  selectedFiles.clear();
+  selectionAnchor = null;
   byId('show-library').setAttribute('aria-pressed', String(!value));
   byId('show-bin').setAttribute('aria-pressed', String(value));
   byId('library-title').textContent = value ? 'Bin' : 'Your files';
@@ -223,77 +225,90 @@ function showBin(value) {
 byId('show-library').onclick = () => showBin(false);
 byId('show-bin').onclick = () => showBin(true);
 
-function binKey(file) {
+function fileKey(file) {
   return (file.split ? 'split' : file.account.id) + '/' + file.id;
 }
 
-function syncBinSelection() {
-  const available = files.filter(file => file.trashed);
-  const selected = available.filter(file => selectedBinFiles.has(binKey(file)));
-  for (const { checkbox, keys } of binCheckboxes) {
-    const count = keys.filter(key => selectedBinFiles.has(key)).length;
+function syncSelection() {
+  const available = files.filter(file => Boolean(file.trashed) === showingBin);
+  const selected = available.filter(file => selectedFiles.has(fileKey(file)));
+  for (const { checkbox, keys } of selectionCheckboxes) {
+    const count = keys.filter(key => selectedFiles.has(key)).length;
     checkbox.checked = count === keys.length;
     checkbox.indeterminate = count > 0 && count < keys.length;
-    checkbox.disabled = binBusy;
+    checkbox.disabled = bulkBusy;
   }
-  const allVisibleSelected = visibleBinFiles.length > 0 &&
-    visibleBinFiles.every(file => selectedBinFiles.has(binKey(file)));
-  byId('select-all-bin').textContent = allVisibleSelected ? 'Deselect all' : 'Select all';
-  byId('select-all-bin').disabled = binBusy || !visibleBinFiles.length;
-  byId('restore-selected').disabled = binBusy || !selected.length || selected.some(file => file.purging);
-  byId('delete-selected').disabled = binBusy || !selected.length;
-  byId('empty-bin').disabled = binBusy || !available.length;
+  const allVisibleSelected = visibleSelectionFiles.length > 0 &&
+    visibleSelectionFiles.every(file => selectedFiles.has(fileKey(file)));
+  byId('select-all-files').textContent = allVisibleSelected ? 'Deselect all' : 'Select all';
+  byId('select-all-files').disabled = bulkBusy || !visibleSelectionFiles.length;
+  byId('move-selected-to-bin').hidden = showingBin;
+  byId('move-selected-to-bin').disabled = bulkBusy || !selected.length;
+  for (const id of ['restore-selected', 'delete-selected', 'empty-bin']) byId(id).hidden = !showingBin;
+  byId('restore-selected').disabled = bulkBusy || !selected.length || selected.some(file => file.purging);
+  byId('delete-selected').disabled = bulkBusy || !selected.length;
+  byId('empty-bin').disabled = bulkBusy || !available.length;
   byId('bin-selection-count').textContent = selected.length + ' selected';
 }
 
-function binCheckbox(name, items) {
+function selectionCheckbox(rowKey, name, items) {
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.className = 'bin-checkbox';
   checkbox.setAttribute('aria-label', 'Select ' + name);
-  const keys = items.map(binKey);
-  binCheckboxes.push({ checkbox, keys });
-  checkbox.onchange = () => {
-    for (const key of keys) {
-      if (checkbox.checked) selectedBinFiles.add(key);
-      else selectedBinFiles.delete(key);
+  const keys = items.map(fileKey);
+  selectionCheckboxes.push({ checkbox, keys, rowKey });
+  checkbox.onclick = event => {
+    const clicked = selectionCheckboxes.findIndex(row => row.rowKey === rowKey);
+    const anchor = selectionCheckboxes.findIndex(row => row.rowKey === selectionAnchor);
+    const range = event.shiftKey && anchor !== -1
+      ? selectionCheckboxes.slice(Math.min(anchor, clicked), Math.max(anchor, clicked) + 1)
+      : [selectionCheckboxes[clicked]];
+    for (const row of range) {
+      for (const key of row.keys) {
+        if (checkbox.checked) selectedFiles.add(key);
+        else selectedFiles.delete(key);
+      }
     }
-    syncBinSelection();
+    selectionAnchor = rowKey;
+    syncSelection();
   };
   return checkbox;
 }
 
-byId('select-all-bin').onclick = () => {
-  const keys = visibleBinFiles.map(binKey);
-  const clear = keys.every(key => selectedBinFiles.has(key));
+byId('select-all-files').onclick = () => {
+  const keys = visibleSelectionFiles.map(fileKey);
+  const clear = keys.every(key => selectedFiles.has(key));
   for (const key of keys) {
-    if (clear) selectedBinFiles.delete(key);
-    else selectedBinFiles.add(key);
+    if (clear) selectedFiles.delete(key);
+    else selectedFiles.add(key);
   }
-  syncBinSelection();
+  syncSelection();
 };
 
-async function bulkBinAction(action, empty = false) {
-  if (binBusy) return;
-  const items = files.filter(file => file.trashed && (empty || selectedBinFiles.has(binKey(file))));
+async function bulkFileAction(action, empty = false) {
+  if (bulkBusy) return;
+  const items = files.filter(file => Boolean(file.trashed) === showingBin && (empty || selectedFiles.has(fileKey(file))));
   if (!items.length) return;
   if (action === 'restore' && items.some(file => file.purging)) {
     message('A selected file is already being permanently deleted. Deselect it before restoring.');
     return;
   }
+  const verb = { delete: 'Permanently delete', restore: 'Restore', trash: 'Move to bin' }[action];
+  const outcome = { delete: 'permanently deleted', restore: 'restored', trash: 'moved to bin' }[action];
   const prompt = empty
     ? 'Permanently delete all ' + items.length + ' files currently listed in the Drivepool Bin?'
-    : (action === 'delete' ? 'Permanently delete ' : 'Restore ') + items.length + ' selected files?';
+    : verb + ' ' + items.length + ' selected files?';
   if (!window.confirm(prompt + (action === 'delete' ? ' This cannot be undone.' : ''))) return;
-  binBusy = true;
-  syncBinSelection();
+  bulkBusy = true;
+  syncSelection();
   let completed = 0;
   let firstError;
   try {
     for (const file of items) {
       try {
         await runFileAction(file, action);
-        selectedBinFiles.delete(binKey(file));
+        selectedFiles.delete(fileKey(file));
         completed++;
       } catch (error) {
         firstError ??= error.message;
@@ -305,17 +320,18 @@ async function bulkBinAction(action, empty = false) {
       firstError ??= 'Could not refresh the Bin and storage. ' + error.message;
     }
     const result = completed + ' of ' + items.length + ' files ' +
-      (action === 'delete' ? 'permanently deleted.' : 'restored.');
+      outcome + '.';
     message(result + (firstError ? ' ' + firstError : ''));
   } finally {
-    binBusy = false;
-    syncBinSelection();
+    bulkBusy = false;
+    syncSelection();
   }
 }
 
-byId('restore-selected').onclick = () => bulkBinAction('restore');
-byId('delete-selected').onclick = () => bulkBinAction('delete');
-byId('empty-bin').onclick = () => bulkBinAction('delete', true);
+byId('move-selected-to-bin').onclick = () => bulkFileAction('trash');
+byId('restore-selected').onclick = () => bulkFileAction('restore');
+byId('delete-selected').onclick = () => bulkFileAction('delete');
+byId('empty-bin').onclick = () => bulkFileAction('delete', true);
 
 function renderFiles() {
   const query = byId('search').value.trim().toLowerCase();
@@ -354,16 +370,15 @@ function renderFiles() {
     }
   }
 
-  const binned = files.filter(file => file.trashed);
-  const binnedKeys = new Set(binned.map(binKey));
-  for (const key of selectedBinFiles) {
-    if (!binnedKeys.has(key)) selectedBinFiles.delete(key);
+  const available = files.filter(file => Boolean(file.trashed) === showingBin);
+  const availableKeys = new Set(available.map(fileKey));
+  for (const key of selectedFiles) {
+    if (!availableKeys.has(key)) selectedFiles.delete(key);
   }
-  binCheckboxes = [];
-  byId('bin-actions').hidden = !showingBin;
-  visibleBinFiles = showingBin ? binned.filter(file =>
+  selectionCheckboxes = [];
+  visibleSelectionFiles = available.filter(file =>
     visibleFiles.includes(file) || (file.folder || '').split('/').some((_, index, segments) =>
-      folders.has(segments.slice(0, index + 1).join('/')))) : [];
+      folders.has(segments.slice(0, index + 1).join('/'))));
 
   const folderRows = [...folders].sort().map(path => {
     const name = path.split('/').at(-1);
@@ -382,7 +397,7 @@ function renderFiles() {
       actions.push(['Move folder contents to bin', () => changeFolder(path, 'trash')]);
     }
     item.append(button, actionsMenu(name, actions));
-    if (showingBin) item.prepend(binCheckbox('folder ' + path, binned.filter(file =>
+    item.prepend(selectionCheckbox('folder:' + path, 'folder ' + path, available.filter(file =>
       file.folder === path || file.folder?.startsWith(path + '/'))));
     return item;
   });
@@ -404,7 +419,7 @@ function renderFiles() {
     const account = file.split ? (file.driveEmails || []).join(', ') || 'Multiple Drives' : file.account.email;
     const item = row(icon + ' ' + file.name, account, actionsMenu(file.name, actions));
     item.className = 'file-item';
-    if (showingBin) item.prepend(binCheckbox(file.name, [file]));
+    item.prepend(selectionCheckbox(fileKey(file), file.name, [file]));
     if (!showingBin && view === 'grid' && file.hasThumbnail) {
       const preview = document.createElement('img');
       preview.className = 'file-preview';
@@ -420,7 +435,7 @@ function renderFiles() {
   list.replaceChildren(...fileRows);
   byId('folder-section').hidden = !folderRows.length;
   byId('file-section').hidden = !fileRows.length;
-  if (showingBin) syncBinSelection();
+  syncSelection();
   const empty = byId('empty');
   empty.hidden = folderRows.length + fileRows.length > 0;
   empty.textContent = query ? 'No matching files or folders.' : showingBin ? 'No items in this part of the bin.' : 'No files uploaded here yet.';

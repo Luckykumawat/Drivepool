@@ -141,6 +141,8 @@ button:hover:not(:disabled), .download:hover { background-color: #f1eaff; border
 #bin-selection-count { color: #605a77; font-size: .85rem; margin-inline: 4px; }
 .bin-actions .danger { color: #9e234d; border-color: #efd4e1; }
 .bin-actions .danger:hover:not(:disabled) { background: #fcecf4; }
-.bin-checkbox { width: 16px; height: 16px; margin: 0 2px; flex: 0 0 16px; accent-color: #6552c5; }
-#files[data-view="grid"] .file-item:has(.bin-checkbox) { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+.folder-item:has(.bin-checkbox), .file-item:has(.bin-checkbox) { position: relative; padding-left: 30px; }
+#folders[data-view="grid"] .folder-item:has(.bin-checkbox), #files[data-view="grid"] .file-item:has(.bin-checkbox) { padding-left: 32px; }
+.bin-checkbox { position: absolute; left: 8px; top: 9px; width: 16px; height: 16px; margin: 0; accent-color: #6552c5; cursor: pointer; }
+.bin-checkbox:focus-visible { outline: 2px solid #6953cb; outline-offset: 2px; }
 #files .file-item:has(.bin-checkbox) > div { flex: 1; min-width: 0; }

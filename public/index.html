@@ -55,12 +55,13 @@
             <button id="grid-view" aria-pressed="true">Grid</button>
           </div>
         </div>
-        <div id="bin-actions" class="bin-actions" aria-label="Bin actions" hidden>
-          <button id="select-all-bin" type="button">Select all</button>
+        <div id="selection-actions" class="bin-actions" aria-label="Bulk file actions">
+          <button id="select-all-files" type="button">Select all</button>
           <span id="bin-selection-count" aria-live="polite"></span>
-          <button id="restore-selected" type="button">Restore selected</button>
-          <button id="delete-selected" type="button" class="danger">Delete selected permanently</button>
-          <button id="empty-bin" type="button" class="danger">Empty bin</button>
+          <button id="move-selected-to-bin" type="button" class="danger">Move selected to bin</button>
+          <button id="restore-selected" type="button" hidden>Restore selected</button>
+          <button id="delete-selected" type="button" hidden class="danger">Delete selected permanently</button>
+          <button id="empty-bin" type="button" hidden class="danger">Empty bin</button>
         </div>
         <nav id="breadcrumbs" aria-label="Current folder"></nav>
         <progress id="progress" max="100" aria-label="Upload progress" hidden></progress>
