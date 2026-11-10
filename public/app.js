@@ -2,6 +2,7 @@ const byId = id => document.getElementById(id);
 const themeSelect = byId('theme-select');
 const themeColor = document.querySelector('meta[name="theme-color"]');
 const themeColors = new Map([
+  ['studio', '#f3f5fc'],
   ['amber', '#f8f4eb'],
   ['ocean', '#f1f7ff'],
   ['lavender', '#f7f3fc'],
@@ -11,7 +12,7 @@ const themeColors = new Map([
 ]);
 
 function applyTheme(theme) {
-  const selected = themeColors.has(theme) ? theme : 'forest-lime';
+  const selected = themeColors.has(theme) ? theme : 'studio';
   document.documentElement.dataset.theme = selected;
   themeSelect.value = selected;
   document.querySelector('.brand img').src =
@@ -572,6 +573,15 @@ function openUploadPicker(input) {
   input.click();
 }
 upload.onclick = () => openUploadPicker(chooser);
+const uploadMenu = byId('upload-actions');
+document.addEventListener('click', event => {
+  if (!uploadMenu.contains(event.target)) uploadMenu.open = false;
+});
+uploadMenu.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || !uploadMenu.open) return;
+  uploadMenu.open = false;
+  uploadMenu.querySelector('summary').focus();
+});
 const folderChooser = byId('folder');
 const uploadFolder = byId('choose-folder');
 uploadFolder.onclick = () => openUploadPicker(folderChooser);
@@ -671,6 +681,7 @@ try {
   byId('logout').hidden = !signedIn;
   byId('open-storage').hidden = !signedIn;
   byId('library').hidden = !signedIn;
+  document.body.classList.toggle('signed-in', signedIn);
   if (signedIn) await refresh();
 } catch (error) {
   message(error.message);

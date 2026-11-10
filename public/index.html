@@ -1,22 +1,23 @@
 <!doctype html>
-<html lang="en" data-theme="forest-lime">
+<html lang="en" data-theme="studio">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f3f6ef">
+  <meta name="theme-color" content="#f3f5fc">
   <title>Drivepool — Your drives, together</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png?v=3">
   <link rel="icon" href="/icon-192.png?v=3">
-  <link rel="stylesheet" href="/style.css?v=10">
-  <script src="/app.js?v=10" type="module"></script>
+  <link rel="stylesheet" href="/style.css?v=11">
+  <script src="/app.js?v=11" type="module"></script>
 </head>
 <body>
   <header class="shell top">
-    <a class="brand" href="/"><img src="/icon-forest.png" alt=""> Drivepool</a>
+    <a class="brand" href="/"><img src="/icon-192.png?v=3" alt=""> Drivepool</a>
     <div class="actions">
       <label class="theme-control">Theme
         <select id="theme-select">
+          <option value="studio">Studio</option>
           <option value="amber">Amber</option>
           <option value="ocean">Ocean Blue</option>
           <option value="lavender">Lavender</option>
@@ -40,7 +41,9 @@
     </section>
     </div>
     <p id="message" class="notice" role="status" hidden></p>
-      <section class="card panel" id="library" hidden>
+      <section id="library" hidden>
+        <aside class="workspace-sidebar" aria-label="Workspace navigation">
+          <span class="workspace-label">Workspace</span>
         <details id="upload-actions" class="item-actions new-upload">
           <summary class="primary">+ New</summary>
           <div class="action-panel">
@@ -48,18 +51,20 @@
             <button id="choose-folder" type="button">Upload folder</button>
           </div>
         </details>
-        <div class="panel-heading"><div><h2 id="library-title">Your files</h2><p id="library-description">Manage files from all your connected Drives.</p></div></div>
-        <input type="file" id="file" multiple hidden>
-        <input type="file" id="folder" webkitdirectory multiple hidden>
-        <div class="library-controls">
         <div class="library-tabs" role="group" aria-label="File location">
-          <button id="show-library" aria-pressed="true">My files</button>
-          <button id="show-bin" aria-pressed="false">Bin</button>
+          <button id="show-library" aria-pressed="true"><span aria-hidden="true">▤</span> My files</button>
+          <button id="show-bin" aria-pressed="false"><span aria-hidden="true">▱</span> Bin</button>
         </div>
+        </aside>
+        <div class="workspace-main">
+        <div class="workspace-heading">
+          <div><h2 id="library-title">Your files</h2><p id="library-description">Manage files from all your connected Drives.</p></div>
         <div class="file-toolbar">
           <input type="search" id="search" aria-label="Search files and folders" placeholder="Search files and folders">
         </div>
         </div>
+        <input type="file" id="file" multiple hidden>
+        <input type="file" id="folder" webkitdirectory multiple hidden>
         <div id="selection-actions" hidden class="bin-actions" aria-label="Bulk file actions">
           <button id="select-all-files" type="button">Select all</button>
           <span id="bin-selection-count" aria-live="polite"></span>
@@ -85,6 +90,7 @@
           <h3>Files</h3>
           <ul id="files"></ul>
         </section>
+        </div>
       </section>
   </main>
   <dialog id="storage-drawer" aria-labelledby="storage-title">
