@@ -1,21 +1,26 @@
 const byId = id => document.getElementById(id);
-const themeToggle = byId('theme-toggle');
+const themeSelect = byId('theme-select');
 const themeColor = document.querySelector('meta[name="theme-color"]');
+const themeColors = new Map([
+  ['amber', '#f8f4eb'],
+  ['ocean', '#f1f7ff'],
+  ['lavender', '#f7f3fc']
+]);
 
-function applyTheme(dark) {
-  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  themeToggle.setAttribute('aria-pressed', String(dark));
-  themeColor.content = dark ? '#111827' : '#f8f4eb';
+function applyTheme(theme) {
+  const selected = themeColors.has(theme) ? theme : 'amber';
+  document.documentElement.dataset.theme = selected;
+  themeSelect.value = selected;
+  themeColor.content = themeColors.get(selected);
 }
 
 let savedTheme;
 try { savedTheme = localStorage.getItem('drivepool-theme'); } catch {}
-applyTheme(savedTheme === 'dark');
+applyTheme(savedTheme);
 
-themeToggle.addEventListener('click', () => {
-  const dark = document.documentElement.dataset.theme !== 'dark';
-  applyTheme(dark);
-  try { localStorage.setItem('drivepool-theme', dark ? 'dark' : 'light'); } catch {}
+themeSelect.addEventListener('change', () => {
+  applyTheme(themeSelect.value);
+  try { localStorage.setItem('drivepool-theme', themeSelect.value); } catch {}
 });
 
 const notice = byId('message');
