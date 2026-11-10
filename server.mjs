@@ -258,9 +258,15 @@ function attachment(name) {
 }
 
 async function downloadSplit(res, id, user, connections) {
-  const [record] = await query('SELECT manifest FROM @split_files WHERE id=? AND user_id=?', id, user);
+  const [record] = await query('SELECT user_id,manifest FROM @split_files WHERE id=?', id);
   if (!record) fail(404, 'File not found.');
-  const { name, size, parts } = JSON.parse(record.manifest);
+  const { name, size, parts, trashed, viewers = [] } = JSON.parse(record.manifest);
+  if (record.user_id !== user) {
+    const primary = connections.find(account => hash('drivepool-primary:' + account.subject) === user);
+    if (!primary || !viewers.includes(primary.email.toLowerCase())) fail(404, 'File not found.');
+    connections = await query('SELECT * FROM @drives WHERE user_id=?', record.user_id);
+  }
+  if (trashed) fail(404, 'File is in the bin.');
   const controller = new AbortController();
   res.once('close', () => controller.abort());
 
@@ -302,6 +308,153 @@ async function downloadSplit(res, id, user, connections) {
     'Content-Length': size
   });
   await pipeline(Readable.from(joinParts()), res);
+}
+
+const activeFileActions = new Set();
+
+async function driveMutation(target, token, method, data) {
+  const response = await google(target, {
+    method,
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) {
+    await response.body?.cancel();
+    fail(502, 'Google Drive could not complete this action. Check access and available space, then retry.');
+  }
+  return response.json();
+}
+
+async function fileAction(req, res, user, connections, connectionId, id) {
+  const chunks = [];
+  let length = 0;
+  for await (const chunk of req.iterator({ destroyOnReturn: false })) {
+    length += chunk.length;
+    if (length > 4096) fail(413, 'File action is too large.');
+    chunks.push(chunk);
+  }
+  let fields;
+  try {
+    fields = JSON.parse(Buffer.concat(chunks).toString());
+  } catch {
+    fail(400, 'Invalid file action.');
+  }
+  const action = fields?.action;
+  const name = typeof fields?.name === 'string' ? fields.name.trim() : '';
+  if (!['rename', 'copy', 'trash', 'share'].includes(action)) fail(400, 'Invalid file action.');
+  if (action === 'rename' && (!name || name.length > 255 || /[\x00-\x1f\x7f]/.test(name))) {
+    fail(400, 'Enter a valid file name.');
+  }
+  const emailAddress = typeof fields.email === 'string' ? fields.email.trim() : '';
+  if (action === 'share' && (!emailAddress || emailAddress.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress))) fail(400, 'Enter a valid recipient email.');
+
+  const lock = user + '/' + connectionId + '/' + id;
+  if (activeFileActions.has(lock)) fail(409, 'Another action is already running for this file.');
+  activeFileActions.add(lock);
+  try {
+    if (connectionId === 'split') {
+      const [record] = await query('SELECT manifest FROM @split_files WHERE id=? AND user_id=?', id, user);
+      if (!record) fail(404, 'File not found.');
+      const file = JSON.parse(record.manifest);
+      if (file.trashed) fail(404, 'File is in the bin.');
+      if (action === 'share') {
+        const viewers = [...new Set([...(file.viewers || []), emailAddress.toLowerCase()])];
+        if (viewers.length > 100) fail(409, 'This file has reached its sharing limit.');
+        await query('UPDATE @split_files SET manifest=? WHERE id=? AND user_id=?',
+          JSON.stringify({ ...file, viewers }), id, user);
+        return json(res, 200, { url: origin + '/api/split-download/' + id });
+      }
+      if (action === 'rename') {
+        await query('UPDATE @split_files SET manifest=? WHERE id=? AND user_id=?',
+          JSON.stringify({ ...file, name }), id, user);
+        return json(res, 200, { ok: true });
+      }
+
+      const sources = await Promise.all(file.parts.map(async part => {
+        const connection = connections.find(account => account.id === part.connectionId);
+        if (!connection) fail(409, 'Reconnect the Drive that holds a file part.');
+        const token = await access(connection);
+        const target = driveApi + '/files/' + encodeURIComponent(part.fileId);
+        const info = await google(target + '?fields=size,md5Checksum,appProperties,trashed', {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        if (!info.ok) fail(409, 'A file part is unavailable.');
+        const metadata = await info.json();
+        if (metadata.trashed || metadata.appProperties?.drivepoolSplit !== id ||
+            Number(metadata.size) !== part.size || metadata.md5Checksum !== part.md5) {
+          fail(409, 'A file part is missing or has changed.');
+        }
+        return { part, token, target };
+      }));
+      const changes = [];
+      const copyId = randomUUID();
+      let saving = false;
+      try {
+        for (const [index, source] of sources.entries()) {
+          const { part, token, target } = source;
+          if (action === 'trash') {
+            await driveMutation(target, token, 'PATCH', { trashed: true });
+            changes.push({ token, target });
+          } else {
+            const copy = await driveMutation(target + '/copy?fields=id,size,md5Checksum', token, 'POST', {
+              name: 'Drivepool-' + copyId + '-part-' + (index + 1),
+              appProperties: { drivepoolSplit: copyId }
+            });
+            changes.push({ token, target: driveApi + '/files/' + encodeURIComponent(copy.id),
+              part: { ...part, fileId: copy.id } });
+            if (Number(copy.size) !== part.size || copy.md5Checksum !== part.md5) fail(502, 'A copied part failed verification.');
+          }
+        }
+        saving = true;
+        if (action === 'trash') {
+          await query('UPDATE @split_files SET manifest=? WHERE id=? AND user_id=?',
+            JSON.stringify({ ...file, trashed: true }), id, user);
+        } else {
+          await query('INSERT INTO @split_files (id,user_id,manifest) VALUES (?,?,?)', copyId, user, JSON.stringify({
+            ...file, viewers: [], name: copyName(file.name), createdTime: new Date().toISOString(), parts: changes.map(change => change.part)
+          }));
+        }
+      } catch (error) {
+        // A database connection can fail after a write commits. Avoid undoing Drive changes in that case.
+        if (!saving) await Promise.allSettled(changes.map(({ token, target }) =>
+          driveMutation(target, token, 'PATCH', { trashed: action !== 'trash' })
+        ));
+        throw error;
+      }
+      return json(res, 200, { ok: true });
+    }
+
+    const connection = connections.find(account => account.id === connectionId);
+    if (!connection) fail(404, 'File not found.');
+    const token = await access(connection);
+    const target = driveApi + '/files/' + encodeURIComponent(id);
+    const info = await google(target + '?fields=name,description,appProperties,trashed', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!info.ok) fail(404, 'File not found.');
+    const file = await info.json();
+    if (file.trashed || file.appProperties?.drivepoolOwner !== user) fail(404, 'File not found.');
+    if (action === 'rename') await driveMutation(target, token, 'PATCH', { name });
+    if (action === 'trash') await driveMutation(target, token, 'PATCH', { trashed: true });
+    if (action === 'copy') {
+      await driveMutation(target + '/copy', token, 'POST', {
+        name: copyName(file.name), description: file.description, appProperties: properties(user)
+      });
+    }
+    if (action === 'share') {
+      await driveMutation(target + '/permissions?sendNotificationEmail=true', token, 'POST', {
+        type: 'user', role: 'reader', emailAddress
+      });
+    }
+    return json(res, 200, { ok: true });
+  } finally {
+    activeFileActions.delete(lock);
+  }
+}
+
+function copyName(name) {
+  return 'Copy of ' + name.slice(0, 247);
 }
 
 const assets = new Map([
@@ -405,12 +558,17 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
       }));
       const records = await query('SELECT id,manifest FROM @split_files WHERE user_id=?', user);
       const splitFiles = records.map(({ id, manifest }) => {
-        const { parts, ...file } = JSON.parse(manifest);
-        return { ...file, id, split: true, partCount: parts.length };
+        const { parts, viewers, ...file } = JSON.parse(manifest);
+        return { ...file, id, split: true, partCount: parts.length, driveEmails: parts.map(part =>
+          connections.find(connection => connection.id === part.connectionId)?.email).filter(Boolean) };
       });
-      return json(res, 200, { accounts, splitFiles });
+      return json(res, 200, { accounts, splitFiles: splitFiles.filter(file => !file.trashed) });
     }
     if (path === '/api/upload' && req.method === 'POST') return await upload(req, res, url, user, connections);
+    const actionMatch = path.match(/^\/api\/file-action\/([\w-]+)\/([\w-]+)$/);
+    if (actionMatch && req.method === 'POST') {
+      return await fileAction(req, res, user, connections, actionMatch[1], actionMatch[2]);
+    }
     const splitDownload = path.match(/^\/api\/split-download\/([\w-]+)$/);
     if (splitDownload && req.method === 'GET') return await downloadSplit(res, splitDownload[1], user, connections);
     const match = path.match(/^\/api\/(download|thumbnail)\/([\w-]+)\/([\w-]+)$/);

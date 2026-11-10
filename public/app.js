@@ -89,6 +89,106 @@ function openFolder(path) {
   renderFiles();
 }
 
+async function runFileAction(file, action, fields = {}) {
+  const connection = file.split ? 'split' : file.account.id;
+  const endpoint = '/api/file-action/' + encodeURIComponent(connection) + '/' + encodeURIComponent(file.id);
+  return read(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...fields })
+  });
+}
+
+function actionsMenu(name, actions) {
+  const menu = document.createElement('details');
+  menu.className = 'item-actions';
+  const toggle = document.createElement('summary');
+  toggle.textContent = '⋮';
+  toggle.setAttribute('aria-label', 'Actions for ' + name);
+  const panel = document.createElement('div');
+  panel.className = 'action-panel';
+  for (const [label, handler] of actions) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.onclick = () => {
+      menu.open = false;
+      handler();
+    };
+    panel.append(button);
+  }
+  menu.append(toggle, panel);
+  menu.ontoggle = () => {
+    if (menu.open) document.querySelectorAll('.item-actions[open]').forEach(other => {
+      if (other !== menu) other.open = false;
+    });
+  };
+  return menu;
+}
+
+document.addEventListener('click', event => {
+  document.querySelectorAll('.item-actions[open]').forEach(menu => {
+    if (!menu.contains(event.target)) menu.open = false;
+  });
+});
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  document.querySelectorAll('.item-actions[open]').forEach(menu => {
+    menu.open = false;
+    menu.querySelector('summary').focus();
+  });
+});
+
+async function changeFile(file, action) {
+  const fields = {};
+  if (action === 'rename') {
+    const name = window.prompt('New file name', file.name)?.trim();
+    if (!name || name === file.name) return;
+    fields.name = name;
+  }
+  if (action === 'share') {
+    const email = window.prompt(file.split
+      ? 'Allow this email to download the file after signing in to Drivepool'
+      : 'Send a Google Drive invitation with view access to this email')?.trim();
+    if (!email) return;
+    fields.email = email;
+  }
+  if (action === 'trash' && !window.confirm('Move “' + file.name + '” to Google Drive bin?')) return;
+
+  try {
+    const result = await runFileAction(file, action, fields);
+    if (result.url) {
+      window.prompt('Send this link to the recipient. They must sign in to Drivepool with the invited email first.', result.url);
+    }
+    const messages = {
+      rename: 'File renamed.',
+      copy: 'Copy created.',
+      trash: 'Moved to Google Drive bin.',
+      share: result.url ? 'Download access granted to the recipient.' : 'Google Drive invitation sent.'
+    };
+    message(messages[action]);
+  } catch (error) {
+    message(error.message);
+  }
+  await refresh().catch(error => message(error.message));
+}
+
+async function trashFolder(path) {
+  const nested = files.filter(file => file.folder === path || file.folder?.startsWith(path + '/'));
+  if (!window.confirm('Move all ' + nested.length + ' files in “' + path + '” to Google Drive bin?')) return;
+  let moved = 0;
+  try {
+    for (const file of nested) {
+      await runFileAction(file, 'trash');
+      moved++;
+    }
+    message('Moved ' + moved + ' files to Google Drive bin.');
+  } catch (error) {
+    message('Moved ' + moved + ' of ' + nested.length + ' files. ' + error.message);
+  }
+  await refresh().catch(error => message(error.message));
+}
+
 function renderFiles() {
   const query = byId('search').value.trim().toLowerCase();
   const list = byId('files');
@@ -125,23 +225,35 @@ function renderFiles() {
   }
 
   const folderRows = [...folders].sort().map(path => {
+    const name = path.split('/').at(-1);
     const button = document.createElement('button');
-    button.textContent = 'Open';
-    button.setAttribute('aria-label', 'Open folder ' + path);
+    button.className = 'folder-name';
+    button.textContent = '📁 ' + name;
+    button.title = path;
     button.onclick = () => openFolder(path);
-    return row('📁 ' + path.split('/').at(-1), query ? 'Folder · ' + path : 'Folder', button);
+    const item = document.createElement('li');
+    item.className = 'folder-item';
+    item.append(button, actionsMenu(name, [
+      ['Open', () => openFolder(path)],
+      ['Move folder contents to bin', () => trashFolder(path)]
+    ]));
+    return item;
   });
   const fileRows = visibleFiles.map(file => {
-    const [kind, icon] = fileKind(file);
+    const [, icon] = fileKind(file);
     const id = file.split ? encodeURIComponent(file.id)
       : encodeURIComponent(file.account.id) + '/' + encodeURIComponent(file.id);
-    const link = document.createElement('a');
-    link.className = 'download';
-    link.href = (file.split ? '/api/split-download/' : '/api/download/') + id;
-    link.textContent = 'Download';
-    link.setAttribute('aria-label', 'Download ' + file.name);
-    const detail = [kind, bytes(file.size), file.split ? file.partCount + ' Drives' : file.account.email, query && file.folder].filter(Boolean).join(' · ');
-    const item = row(icon + ' ' + file.name, detail, link);
+    const download = (file.split ? '/api/split-download/' : '/api/download/') + id;
+    const actions = [
+      ['Rename', () => changeFile(file, 'rename')],
+      ['Download', () => window.location.assign(download)],
+      ['Make a copy', () => changeFile(file, 'copy')]
+    ];
+    actions.push(['Share', () => changeFile(file, 'share')]);
+    actions.push(['Move to bin', () => changeFile(file, 'trash')]);
+    const account = file.split ? (file.driveEmails || []).join(', ') || 'Multiple Drives' : file.account.email;
+    const item = row(icon + ' ' + file.name, account, actionsMenu(file.name, actions));
+    item.className = 'file-item';
     if (view === 'grid' && file.hasThumbnail) {
       const preview = document.createElement('img');
       preview.className = 'file-preview';
