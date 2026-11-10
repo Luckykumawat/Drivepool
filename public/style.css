@@ -136,3 +136,11 @@ button:hover:not(:disabled), .download:hover { background-color: #f1eaff; border
 #files[data-view="grid"] .file-item:hover { border-color: #bdb0ed; }
 .action-panel button { white-space: normal; }
 .action-panel { min-width: 156px; max-width: min(230px, 70vw); }
+
+.bin-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+#bin-selection-count { color: #605a77; font-size: .85rem; margin-inline: 4px; }
+.bin-actions .danger { color: #9e234d; border-color: #efd4e1; }
+.bin-actions .danger:hover:not(:disabled) { background: #fcecf4; }
+.bin-checkbox { width: 16px; height: 16px; margin: 0 2px; flex: 0 0 16px; accent-color: #6552c5; }
+#files[data-view="grid"] .file-item:has(.bin-checkbox) { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+#files .file-item:has(.bin-checkbox) > div { flex: 1; min-width: 0; }
