@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 480" role="img" aria-label="Drivepool workspace illustration">
+<rect width="1120" height="480" rx="18" fill="#f8fafd"/>
+<g font-family="system-ui,sans-serif" fill="#1f1f1f">
+<rect x="20" y="15" width="34" height="34" rx="9" fill="#0b57d0"/>
+<text x="29" y="38" font-size="18" fill="#fff">D</text>
+<text x="64" y="38" font-size="20" fill="#1f1f1f">Drivepool</text>
+<rect x="246" y="12" width="540" height="39" rx="20" fill="#e9eef6"/>
+<text x="270" y="37" font-size="14" fill="#1f1f1f">⌕   Search files and folders</text>
+<text x="945" y="37" font-size="14" fill="#1f1f1f">Classic Blue    Sign out</text>
+<rect x="20" y="69" width="104" height="48" rx="14" fill="#fff"/>
+<text x="41" y="99" font-size="16" fill="#1f1f1f">+ New</text>
+<rect x="17" y="136" width="211" height="34" rx="17" fill="#c2e7ff"/>
+<text x="36" y="158" font-size="15" fill="#1f1f1f">My files</text>
+<text x="36" y="189" font-size="15" fill="#1f1f1f">Bin</text>
+<text x="36" y="222" font-size="15" fill="#1f1f1f">Storage</text>
+<rect x="246" y="63" width="858" height="400" rx="18" fill="#fff"/>
+<text x="268" y="105" font-size="25" fill="#1f1f1f">Your files</text>
+<text x="268" y="129" font-size="13" fill="#444746">Drop files here or use + New to upload.</text>
+<text x="268" y="163" font-size="16" fill="#1f1f1f">Folders</text>
+<rect x="268" y="176" width="185" height="46" rx="10" fill="#e9eef6"/>
+<path fill="#444746" transform="translate(280 190)" d="M0 0h7l2 2h9v13H0z"/>
+<text x="305" y="204" font-size="14" fill="#1f1f1f">Design assets</text>
+<text x="433" y="204" font-size="15" fill="#1f1f1f">⋮</text>
+<rect x="466" y="176" width="185" height="46" rx="10" fill="#e9eef6"/>
+<path fill="#444746" transform="translate(478 190)" d="M0 0h7l2 2h9v13H0z"/>
+<text x="503" y="204" font-size="14" fill="#1f1f1f">Documents</text>
+<text x="631" y="204" font-size="15" fill="#1f1f1f">⋮</text>
+<rect x="664" y="176" width="185" height="46" rx="10" fill="#e9eef6"/>
+<path fill="#444746" transform="translate(676 190)" d="M0 0h7l2 2h9v13H0z"/>
+<text x="701" y="204" font-size="14" fill="#1f1f1f">Finance</text>
+<text x="829" y="204" font-size="15" fill="#1f1f1f">⋮</text>
+<text x="268" y="252" font-size="16" fill="#1f1f1f">Files</text>
+<rect x="268" y="264" width="188" height="171" rx="12" fill="#e9eef6"/>
+<rect x="278" y="278" width="17" height="17" rx="3" fill="#e73b3e"/>
+<text x="281" y="291" font-size="11" fill="#fff">▴</text>
+<text x="304" y="292" font-size="13" fill="#1f1f1f">Landscape.png</text>
+<text x="439" y="292" font-size="15" fill="#1f1f1f">⋮</text>
+<rect x="276" y="308" width="172" height="96" rx="6" fill="#fff"/>
+<rect x="276" y="308" width="172" height="96" rx="6" fill="#d7e8fa"/>
+<path fill="#7896ad" d="M276 402l49-60 31 32 36-50 56 78z"/>
+<text x="280" y="424" font-size="11" fill="#444746">demo@example.test</text>
+<rect x="469" y="264" width="188" height="171" rx="12" fill="#e9eef6"/>
+<rect x="479" y="278" width="17" height="17" rx="3" fill="#0b57d0"/>
+<text x="482" y="291" font-size="11" fill="#fff">▴</text>
+<text x="505" y="292" font-size="13" fill="#1f1f1f">Campaign.pdf</text>
+<text x="640" y="292" font-size="15" fill="#1f1f1f">⋮</text>
+<rect x="477" y="308" width="172" height="96" rx="6" fill="#fff"/>
+<rect x="501" y="326" width="115" height="3" rx="1" fill="#e1e7ee"/>
+<rect x="501" y="337" width="107" height="3" rx="1" fill="#e1e7ee"/>
+<rect x="501" y="348" width="99" height="3" rx="1" fill="#e1e7ee"/>
+<rect x="501" y="359" width="91" height="3" rx="1" fill="#e1e7ee"/>
+<rect x="501" y="370" width="83" height="3" rx="1" fill="#e1e7ee"/>
+<text x="481" y="424" font-size="11" fill="#444746">demo@example.test</text>
+<rect x="670" y="264" width="188" height="171" rx="12" fill="#e9eef6"/>
+<rect x="680" y="278" width="17" height="17" rx="3" fill="#e73b3e"/>
+<text x="683" y="291" font-size="11" fill="#fff">▴</text>
+<text x="706" y="292" font-size="13" fill="#1f1f1f">City lights.jpg</text>
+<text x="841" y="292" font-size="15" fill="#1f1f1f">⋮</text>
+<rect x="678" y="308" width="172" height="96" rx="6" fill="#fff"/>
+<rect x="678" y="308" width="172" height="96" rx="6" fill="#d7e8fa"/>
+<path fill="#7896ad" d="M678 402l49-60 31 32 36-50 56 78z"/>
+<text x="682" y="424" font-size="11" fill="#444746">demo@example.test</text>
+<rect x="871" y="264" width="188" height="171" rx="12" fill="#e9eef6"/>
+<rect x="881" y="278" width="17" height="17" rx="3" fill="#0b57d0"/>
+<text x="884" y="291" font-size="11" fill="#fff">▴</text>
+<text x="907" y="292" font-size="13" fill="#1f1f1f">Field notes.txt</text>
+<text x="1042" y="292" font-size="15" fill="#1f1f1f">⋮</text>
+<rect x="879" y="308" width="172" height="96" rx="6" fill="#fff"/>
+<rect x="903" y="326" width="115" height="3" rx="1" fill="#e1e7ee"/>
+<rect x="903" y="337" width="107" height="3" rx="1" fill="#e1e7ee"/>
+<rect x="903" y="348" width="99" height="3" rx="1" fill="#e1e7ee"/>
+<rect x="903" y="359" width="91" height="3" rx="1" fill="#e1e7ee"/>
+<rect x="903" y="370" width="83" height="3" rx="1" fill="#e1e7ee"/>
+<text x="883" y="424" font-size="11" fill="#444746">demo@example.test</text>
+</g></svg>

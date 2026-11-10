@@ -506,3 +506,8 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
   .signed-in .top { grid-template-columns: minmax(0, 1fr); }
   #header-search { grid-row: 3; }
 }
+
+.type-icon { width: 18px; height: 18px; vertical-align: -4px; margin-right: 8px; }
+.type-icon-folder { fill: #444746; }
+.type-icon-image { fill: #e73b3e; }
+.type-icon-image path + path { fill: white; }

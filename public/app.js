@@ -119,6 +119,24 @@ let selectionCheckboxes = [];
 let selectionAnchor = null;
 let currentFolder = '';
 
+function typeIcon(kind) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('type-icon', 'type-icon-' + kind);
+  const paths = kind === 'folder'
+    ? ['M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8z']
+    : ['M4 2h16a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z',
+       'M6 17l4-5 3 3 2-3 3 5z M17 8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z'];
+  for (const shape of paths) {
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', shape);
+    svg.append(path);
+  }
+  return svg;
+}
+
 function fileKind(file) {
   const type = file.mimeType || '';
   if (type.startsWith('image/') || /\.(png|jpe?g|gif|webp|heic|svg|avif|bmp|tiff?)$/i.test(file.name)) return ['Image', '🖼'];
@@ -492,7 +510,8 @@ function renderFiles() {
     const name = path.split('/').at(-1);
     const button = document.createElement('button');
     button.className = 'folder-name';
-    button.textContent = '📁 ' + name;
+    button.textContent = name;
+    button.prepend(typeIcon('folder'));
     button.title = path;
     button.onclick = () => openFolder(path);
     const item = document.createElement('li');
@@ -516,7 +535,7 @@ function renderFiles() {
     return item;
   });
   const fileRows = visibleFiles.map(file => {
-    const [, icon] = fileKind(file);
+    const [kind, icon] = fileKind(file);
     const id = file.split ? encodeURIComponent(file.id)
       : encodeURIComponent(file.account.id) + '/' + encodeURIComponent(file.id);
     const download = (file.split ? '/api/split-download/' : '/api/download/') + id;
@@ -531,11 +550,12 @@ function renderFiles() {
       ['Move to bin', () => changeFile(file, 'trash')]
     ];
     const account = file.split ? (file.driveEmails || []).join(', ') || 'Multiple Drives' : file.account.email;
-    const item = row(icon + ' ' + file.name, account, actionsMenu(file.name, actions));
+    const item = row(kind === 'Image' ? file.name : icon + ' ' + file.name, account, actionsMenu(file.name, actions));
     item.className = 'file-item';
     const nameLabel = item.querySelector('strong');
     nameLabel.className = 'file-name';
     nameLabel.title = file.name;
+    if (kind === 'Image') nameLabel.prepend(typeIcon('image'));
     item.prepend(selectionCheckbox(fileKey(file), file.name, [file]));
     if (!showingBin && file.hasThumbnail) {
       const preview = document.createElement('img');

@@ -10,13 +10,11 @@ Drivepool gives you one workspace for files across multiple personal Google Driv
 - Download your Drivepool uploads from one list.
 - Install the web app from a supported browser on an HTTPS deployment.
 
-## Screenshots
+## Workspace preview
 
-The dashboard and file panel below come from a local test session. The file panel shows the state before the first upload.
+Illustration of the current workspace using demo files.
 
-![Drivepool dashboard showing available storage and one connected Drive](docs/screenshots/dashboard.png)
-
-![Drivepool file panel with the upload button](docs/screenshots/files-panel.png)
+![Drivepool workspace with a top search bar, upload sidebar, and grids for folders and files](docs/screenshots/workspace.svg)
 
 ## How it works
 
