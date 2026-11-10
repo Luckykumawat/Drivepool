@@ -18,10 +18,10 @@ async function read(url, options) {
 
 function bytes(size) {
   if (size == null) return 'Unknown';
-  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-  const unit = Math.min(4, Math.floor(Math.log2(Math.max(1, size)) / 10));
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const unit = Math.min(4, Math.floor(Math.log10(Math.max(1, size)) / 3));
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
-    .format(size / 1024 ** unit) + ' ' + units[unit];
+    .format(size / 1000 ** unit) + ' ' + units[unit];
 }
 
 function row(title, detail, action) {
@@ -37,6 +37,13 @@ function row(title, detail, action) {
   return item;
 }
 
+function storageBadge(free) {
+  const badge = document.createElement('span');
+  badge.className = 'storage-badge';
+  badge.textContent = free == null ? 'Unknown' : bytes(free) + ' free';
+  return badge;
+}
+
 async function refresh() {
   const button = byId('refresh');
   button.disabled = true;
@@ -49,7 +56,7 @@ async function refresh() {
     byId('count').textContent = accounts.length;
     byId('accounts').replaceChildren(...accounts.map(account =>
       row(account.email, account.unavailable ? 'Some account data is unavailable. Refresh or reconnect.' : 'Google Drive',
-        document.createTextNode(account.free == null ? '—' : bytes(account.free) + ' free'))
+        storageBadge(account.free))
     ));
     files = [...splitFiles, ...accounts.flatMap(account => account.files.map(file => ({ ...file, account })))]
       .sort((a, b) => String(b.createdTime).localeCompare(String(a.createdTime)));

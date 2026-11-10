@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f6f8f3">
+  <meta name="theme-color" content="#f3f6f2">
   <title>Drivepool — Your drives, together</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png">
@@ -34,7 +34,7 @@
         <div class="card"><span>Connected drives</span><strong id="count">—</strong></div>
       </section>
       <section class="card panel">
-        <div class="panel-heading"><div><h2>Connected drives</h2><p>Free space accounts for usage across Google services. Google’s 15 GB allowance is shown here as 15 GiB (1 GiB = 1,073,741,824 bytes).</p></div><button id="refresh">Refresh</button></div>
+        <div class="panel-heading"><div><h2>Connected drives</h2></div><button id="refresh">Refresh</button></div>
         <ul id="accounts"></ul>
       </section>
     </div>
@@ -53,7 +53,7 @@
         </div>
         <nav id="breadcrumbs" aria-label="Current folder"></nav>
         <progress id="progress" max="100" aria-label="Upload progress" hidden></progress>
-        <p id="empty" hidden>No files uploaded yet.</p>
+        <p id="empty" class="empty-state" hidden>No files uploaded yet.</p>
         <ul id="files"></ul>
       </section>
   </main>
