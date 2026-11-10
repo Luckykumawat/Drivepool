@@ -6,13 +6,16 @@ const themeColors = new Map([
   ['ocean', '#f1f7ff'],
   ['lavender', '#f7f3fc'],
   ['classic-green', '#f4f7f1'],
-  ['classic-blue', '#f8fafd']
+  ['classic-blue', '#f8fafd'],
+  ['forest-lime', '#f3f6ef']
 ]);
 
 function applyTheme(theme) {
   const selected = themeColors.has(theme) ? theme : 'amber';
   document.documentElement.dataset.theme = selected;
   themeSelect.value = selected;
+  document.querySelector('.brand img').src =
+    selected === 'forest-lime' ? '/icon-forest.png' : '/icon-192.png?v=3';
   themeColor.content = themeColors.get(selected);
 }
 

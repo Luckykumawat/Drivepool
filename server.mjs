@@ -602,6 +602,7 @@ const assets = new Map([
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']],
   ['/sw.js', ['sw.js', 'text/javascript']],
   ['/icon-192.png', ['icon-192.png', 'image/png']],
+  ['/icon-forest.png', ['icon-forest.png', 'image/png']],
   ['/icon-512.png', ['icon-512.png', 'image/png']]
 ].map(([route, [file, type]]) => [route, [readFileSync(new URL('./public/' + file, import.meta.url)), type]]));
 

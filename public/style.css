@@ -248,3 +248,29 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
   --hero-label: #174ea6;
   --hero-badge: #d3e3fd;
 }
+
+:root[data-theme="forest-lime"] {
+  --ink: #182822;
+  --page: #f3f6ef;
+  --tile: #edf3e8;
+  --raised: #f8faf6;
+  --line: #d9e2d4;
+  --outline: #cddacc;
+  --hover-line: #8da987;
+  --hover-tile: #e5eedf;
+  --accent: #356842;
+  --label: #315943;
+  --highlight: #fff;
+  --highlight-line: #d9e2d4;
+  --selection: #bef28e;
+  --selection-hover: #ade679;
+  --selection-ink: #143326;
+  --hero: #143326;
+  --hero-ink: #fff;
+  --hero-muted: #deede5;
+  --hero-label: #baf187;
+  --hero-badge: transparent;
+}
+
+:root[data-theme="forest-lime"] .eyebrow { padding-inline: 0; }
+:root[data-theme="forest-lime"] .primary { border-radius: 10px; }
