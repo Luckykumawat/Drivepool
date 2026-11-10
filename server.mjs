@@ -146,45 +146,162 @@ async function upload(req, res, url, user, connections) {
   }));
   const candidates = results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
   const available = candidate => candidate.max - (pending.get(candidate.connection.subject) || 0);
-  const selected = candidates.filter(candidate => candidate.free !== null && available(candidate) >= size)
-    .sort((a, b) => available(b) - available(a))[0];
-  if (!selected) fail(409, 'No connected Drive with known free space can fit this file.');
+  const ranked = candidates.filter(candidate => candidate.free !== null && available(candidate) >= 0)
+    .sort((a, b) => available(b) - available(a));
+  if (!ranked.length) fail(409, 'No connected Drive has known free space.');
 
-  const { connection, token } = selected;
-  pending.set(connection.subject, (pending.get(connection.subject) || 0) + size);
-  try {
-    const start = await google('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer ' + token, 'Content-Type': 'application/json',
-        'X-Upload-Content-Length': String(size), 'X-Upload-Content-Type': mime
-      },
-      body: JSON.stringify({ name, appProperties: properties(user), ...(folder && { description: 'Drivepool folder: ' + folder }) })
-    });
-    if (!start.ok || !start.headers.get('location')) fail(502, 'Google could not start the upload.');
-    const destination = new URL(start.headers.get('location'));
-    if (destination.origin !== 'https://www.googleapis.com') fail(502, 'Unexpected Drive upload location.');
-    const abort = new AbortController();
-    const uploadTimeout = AbortSignal.timeout(60 * 60 * 1000);
-    const cancel = () => abort.abort();
-    res.once('close', cancel);
-    try {
-      const finish = await google(destination, {
-        method: 'PUT', signal: AbortSignal.any([abort.signal, uploadTimeout]), duplex: 'half',
-        headers: { 'Content-Length': String(size), 'Content-Type': mime },
-        body: size ? req : undefined
-      });
-      if (!finish.ok) fail(502, 'Google could not complete the upload. Refresh and check before retrying.');
-      const file = await finish.json();
-      json(res, 201, { id: file.id, account: connection.email });
-    } finally {
-      res.off('close', cancel);
-    }
-  } finally {
-    const remaining = pending.get(connection.subject) - size;
-    if (remaining) pending.set(connection.subject, remaining);
-    else pending.delete(connection.subject);
+  const plan = [];
+  let remaining = size;
+  for (const candidate of ranked) {
+    const length = Math.min(remaining, available(candidate));
+    if (!length && remaining) continue;
+    plan.push({ ...candidate, length });
+    remaining -= length;
+    if (!remaining) break;
   }
+  if (remaining) fail(409, 'The connected Drives do not have enough available space for this file.');
+
+  for (const { connection, length } of plan) {
+    pending.set(connection.subject, (pending.get(connection.subject) || 0) + length);
+  }
+
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(60 * 60 * 1000)]);
+  res.once('close', cancel);
+  const split = plan.length > 1;
+  const id = randomUUID();
+  const parts = [];
+  let savingManifest = false;
+  const source = req.iterator({ destroyOnReturn: false });
+  let buffered = Buffer.alloc(0);
+
+  async function* take(length, checksum) {
+    while (length > 0) {
+      if (!buffered.length) {
+        const { value, done } = await source.next();
+        if (done) fail(400, 'The upload ended before all bytes arrived.');
+        buffered = Buffer.from(value);
+      }
+      const chunk = buffered.subarray(0, length);
+      buffered = buffered.subarray(chunk.length);
+      length -= chunk.length;
+      checksum.update(chunk);
+      yield chunk;
+    }
+  }
+
+  try {
+    for (const [index, { connection, token, length }] of plan.entries()) {
+      const checksum = createHash('md5');
+      const metadata = split
+        ? { name: 'Drivepool-' + id + '-part-' + (index + 1), appProperties: { drivepoolSplit: id } }
+        : { name, appProperties: properties(user), ...(folder && { description: 'Drivepool folder: ' + folder }) };
+      const file = await uploadDriveFile(token, metadata, split ? 'application/octet-stream' : mime,
+        length, split ? take(length, checksum) : req, signal);
+      if (split) {
+        const md5 = checksum.digest('hex');
+        parts.push({ connectionId: connection.id, fileId: file.id, size: length, md5 });
+        if (file.md5Checksum !== md5 || Number(file.size) !== length) fail(502, 'Drive could not verify an uploaded part.');
+      } else {
+        return json(res, 201, { id: file.id, account: connection.email });
+      }
+    }
+
+    const manifest = { name, size, folder, mimeType: mime, createdTime: new Date().toISOString(), parts };
+    savingManifest = true;
+    await query('INSERT INTO @split_files (id,user_id,manifest) VALUES (?,?,?)', id, user, JSON.stringify(manifest));
+    return json(res, 201, { id, split: true, parts: parts.length });
+  } catch (error) {
+    // A lost database response can leave a committed manifest. Keep its parts in that case.
+    if (!savingManifest) await Promise.allSettled(parts.map(part => {
+      const { token } = plan.find(item => item.connection.id === part.connectionId);
+      return google(driveApi + '/files/' + part.fileId, {
+        method: 'DELETE', headers: { Authorization: 'Bearer ' + token }
+      });
+    }));
+    throw error;
+  } finally {
+    res.off('close', cancel);
+    for (const { connection, length } of plan) {
+      const reserved = pending.get(connection.subject) - length;
+      if (reserved) pending.set(connection.subject, reserved);
+      else pending.delete(connection.subject);
+    }
+  }
+}
+
+async function uploadDriveFile(token, metadata, mime, size, body, signal) {
+  const start = await google('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,size,md5Checksum', {
+    method: 'POST', signal,
+    headers: {
+      Authorization: 'Bearer ' + token, 'Content-Type': 'application/json',
+      'X-Upload-Content-Length': String(size), 'X-Upload-Content-Type': mime
+    },
+    body: JSON.stringify(metadata)
+  });
+  if (!start.ok || !start.headers.get('location')) fail(502, 'Google could not start the upload.');
+  const destination = new URL(start.headers.get('location'));
+  if (destination.origin !== 'https://www.googleapis.com') fail(502, 'Unexpected Drive upload location.');
+  const finish = await google(destination, {
+    method: 'PUT', signal, duplex: 'half',
+    headers: { 'Content-Length': String(size), 'Content-Type': mime },
+    body: size ? body : undefined
+  });
+  if (!finish.ok) fail(502, 'Google could not complete the upload. Refresh and check before retrying.');
+  return finish.json();
+}
+
+function attachment(name) {
+  return "attachment; filename*=UTF-8''" + encodeURIComponent(name)
+    .replace(/['()*]/g, char => '%' + char.charCodeAt(0).toString(16));
+}
+
+async function downloadSplit(res, id, user, connections) {
+  const [record] = await query('SELECT manifest FROM @split_files WHERE id=? AND user_id=?', id, user);
+  if (!record) fail(404, 'File not found.');
+  const { name, size, parts } = JSON.parse(record.manifest);
+  const controller = new AbortController();
+  res.once('close', () => controller.abort());
+
+  const sources = await Promise.all(parts.map(async part => {
+    const connection = connections.find(account => account.id === part.connectionId);
+    if (!connection) fail(409, 'A Drive needed for this file is disconnected.');
+    const headers = { Authorization: 'Bearer ' + await access(connection) };
+    const target = driveApi + '/files/' + encodeURIComponent(part.fileId);
+    const info = await google(target + '?fields=size,md5Checksum,appProperties,trashed', { headers });
+    if (!info.ok) fail(409, 'A file part is unavailable. Reconnect its Drive and retry.');
+    const file = await info.json();
+    if (file.trashed || file.appProperties?.drivepoolSplit !== id ||
+        Number(file.size) !== part.size || file.md5Checksum !== part.md5) {
+      fail(409, 'A file part is missing or has changed.');
+    }
+    return { ...part, headers, target };
+  }));
+
+  async function* joinParts() {
+    for (const part of sources) {
+      const media = await google(part.target + '?alt=media', { headers: part.headers, signal: controller.signal });
+      if (!media.ok || !media.body) fail(502, 'Drive could not download a file part.');
+      let received = 0;
+      const checksum = createHash('md5');
+      for await (const chunk of Readable.fromWeb(media.body)) {
+        received += chunk.length;
+        if (received > part.size) fail(502, 'A file part exceeded its expected size.');
+        checksum.update(chunk);
+        if (received === part.size && checksum.digest('hex') !== part.md5) fail(502, 'A file part failed verification.');
+        yield chunk;
+      }
+      if (received !== part.size) fail(502, 'A file part ended early.');
+    }
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'application/octet-stream',
+    'Content-Disposition': attachment(name),
+    'Content-Length': size
+  });
+  await pipeline(Readable.from(joinParts()), res);
 }
 
 const assets = new Map([
@@ -286,9 +403,16 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
           return { id, email, free: null, max: 0, files: [], unavailable: true };
         }
       }));
-      return json(res, 200, { accounts });
+      const records = await query('SELECT id,manifest FROM @split_files WHERE user_id=?', user);
+      const splitFiles = records.map(({ id, manifest }) => {
+        const { parts, ...file } = JSON.parse(manifest);
+        return { ...file, id, split: true, partCount: parts.length };
+      });
+      return json(res, 200, { accounts, splitFiles });
     }
     if (path === '/api/upload' && req.method === 'POST') return await upload(req, res, url, user, connections);
+    const splitDownload = path.match(/^\/api\/split-download\/([\w-]+)$/);
+    if (splitDownload && req.method === 'GET') return await downloadSplit(res, splitDownload[1], user, connections);
     const match = path.match(/^\/api\/(download|thumbnail)\/([\w-]+)\/([\w-]+)$/);
     if (match && req.method === 'GET') {
       const connection = connections.find(account => account.id === match[2]);
@@ -317,10 +441,9 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
       res.once('close', () => controller.abort());
       const media = await google(target + '?alt=media', { headers, signal: controller.signal });
       if (!media.ok || !media.body) fail(502, 'Drive could not download this file.');
-      const filename = encodeURIComponent(file.name).replace(/['()*]/g, char => '%' + char.charCodeAt(0).toString(16));
       res.writeHead(200, {
         'Content-Type': 'application/octet-stream',
-        'Content-Disposition': "attachment; filename*=UTF-8''" + filename
+        'Content-Disposition': attachment(file.name)
       });
       return await pipeline(Readable.fromWeb(media.body), res);
     }

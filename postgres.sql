@@ -34,4 +34,13 @@ ALTER TABLE drivepool.sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE drivepool.oauth ENABLE ROW LEVEL SECURITY;
 ALTER TABLE drivepool.drives ENABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS drivepool.split_files (
+  id text PRIMARY KEY,
+  user_id text NOT NULL,
+  manifest text NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS split_files_user_idx ON drivepool.split_files (user_id);
+ALTER TABLE drivepool.split_files ENABLE ROW LEVEL SECURITY;
+
 COMMIT;

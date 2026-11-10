@@ -30,7 +30,7 @@
     <div id="dashboard" hidden>
       <section class="metrics" aria-label="Storage summary">
         <div class="card"><span id="free-label">Total free space</span><strong id="free">—</strong></div>
-        <div class="card"><span>Largest single upload</span><strong id="largest">—</strong><small>One file must fit on one Drive.</small></div>
+        <div class="card"><span>Largest single upload</span><strong id="largest">—</strong><small>Based on available Drive space. Large files can span Drives.</small></div>
         <div class="card"><span>Connected drives</span><strong id="count">—</strong></div>
       </section>
       <section class="card panel">
@@ -41,7 +41,7 @@
     </div>
     <p id="message" class="notice" role="status" hidden></p>
       <section class="card panel" id="library" hidden>
-        <div class="panel-heading"><div><h2>Your files</h2><p>New uploads go to a connected Drive with room for the whole file.</p></div><div class="actions"><button id="choose-folder">Upload folder</button><button class="primary" id="choose">Upload files</button></div></div>
+        <div class="panel-heading"><div><h2>Your files</h2><p>Large files can span multiple Drives and download as one file.</p></div><div class="actions"><button id="choose-folder">Upload folder</button><button class="primary" id="choose">Upload files</button></div></div>
         <input type="file" id="file" multiple hidden>
         <input type="file" id="folder" webkitdirectory multiple hidden>
         <div class="file-toolbar">

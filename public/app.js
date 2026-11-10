@@ -41,17 +41,17 @@ async function refresh() {
   const button = byId('refresh');
   button.disabled = true;
   try {
-    const { accounts } = await read('/api/dashboard');
+    const { accounts, splitFiles = [] } = await read('/api/dashboard');
     const measured = accounts.filter(account => account.free != null);
     byId('free-label').textContent = measured.length === accounts.length ? 'Total free space' : 'Known free space';
     byId('free').textContent = measured.length ? bytes(measured.reduce((sum, account) => sum + account.free, 0)) : '—';
-    byId('largest').textContent = measured.length ? bytes(Math.max(...measured.map(account => account.max))) : '—';
+    byId('largest').textContent = measured.length ? bytes(measured.reduce((sum, account) => sum + account.max, 0)) : '—';
     byId('count').textContent = accounts.length;
     byId('accounts').replaceChildren(...accounts.map(account =>
       row(account.email, account.unavailable ? 'Some account data is unavailable. Refresh or reconnect.' : 'Google Drive',
         document.createTextNode(account.free == null ? '—' : bytes(account.free) + ' free'))
     ));
-    files = accounts.flatMap(account => account.files.map(file => ({ ...file, account })))
+    files = [...splitFiles, ...accounts.flatMap(account => account.files.map(file => ({ ...file, account })))]
       .sort((a, b) => String(b.createdTime).localeCompare(String(a.createdTime)));
     renderFiles();
   } finally {
@@ -126,13 +126,14 @@ function renderFiles() {
   });
   const fileRows = visibleFiles.map(file => {
     const [kind, icon] = fileKind(file);
-    const id = encodeURIComponent(file.account.id) + '/' + encodeURIComponent(file.id);
+    const id = file.split ? encodeURIComponent(file.id)
+      : encodeURIComponent(file.account.id) + '/' + encodeURIComponent(file.id);
     const link = document.createElement('a');
     link.className = 'download';
-    link.href = '/api/download/' + id;
+    link.href = (file.split ? '/api/split-download/' : '/api/download/') + id;
     link.textContent = 'Download';
     link.setAttribute('aria-label', 'Download ' + file.name);
-    const detail = [kind, bytes(file.size), file.account.email, query && file.folder].filter(Boolean).join(' · ');
+    const detail = [kind, bytes(file.size), file.split ? file.partCount + ' Drives' : file.account.email, query && file.folder].filter(Boolean).join(' · ');
     const item = row(icon + ' ' + file.name, detail, link);
     if (view === 'grid' && file.hasThumbnail) {
       const preview = document.createElement('img');
@@ -195,14 +196,14 @@ async function uploadSelection(event) {
   const destinationFolder = currentFolder;
   let completed = 0;
   let count = 0;
-  let account;
+  let result;
   let uploadError;
   try {
     for (const file of selected) {
       const relativeFolder = file.webkitRelativePath.split('/').slice(0, -1).join('/');
       const folder = [destinationFolder, relativeFolder].filter(Boolean).join('/');
       message('Uploading ' + (count + 1) + ' of ' + selected.length + ' · ' + file.name + '…');
-      ({ account } = await sendFile(file, folder, completed, total));
+      result = await sendFile(file, folder, completed, total);
       completed += file.size;
       count++;
     }
@@ -212,7 +213,9 @@ async function uploadSelection(event) {
   try {
     await refresh();
     if (uploadError) message(count + ' of ' + selected.length + ' files saved. ' + uploadError);
-    else message(count === 1 ? 'Saved to ' + account + '.' : count + ' files saved.');
+    else if (count > 1) message(count + ' files saved.');
+    else if (result.split) message('Saved across ' + result.parts + ' Drives. Download returns the original file.');
+    else message('Saved to ' + result.account + '.');
   } catch (error) {
     message(count + ' files saved. Refresh failed. ' + (uploadError || error.message));
   } finally {

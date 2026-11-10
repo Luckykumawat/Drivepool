@@ -7,7 +7,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; }
-.shell { width: min(1050px, calc(100% - 32px)); margin-inline: auto; }
+.shell { width: calc(100% - clamp(20px, 3vw, 48px)); margin-inline: auto; }
 .top, .actions, .panel-heading, li { display: flex; align-items: center; gap: 12px; }
 .top, .panel-heading, li { justify-content: space-between; }
 .top { min-height: 76px; }
