@@ -242,6 +242,8 @@ function syncSelection() {
     visibleSelectionFiles.every(file => selectedFiles.has(fileKey(file)));
   byId('select-all-files').textContent = allVisibleSelected ? 'Deselect all' : 'Select all';
   byId('select-all-files').disabled = bulkBusy || !visibleSelectionFiles.length;
+  byId('download-selected').hidden = showingBin;
+  byId('download-selected').disabled = bulkBusy || !selected.length;
   byId('move-selected-to-bin').hidden = showingBin;
   byId('move-selected-to-bin').disabled = bulkBusy || !selected.length;
   for (const id of ['restore-selected', 'delete-selected', 'empty-bin']) byId(id).hidden = !showingBin;
@@ -333,6 +335,72 @@ byId('restore-selected').onclick = () => bulkFileAction('restore');
 byId('delete-selected').onclick = () => bulkFileAction('delete');
 byId('empty-bin').onclick = () => bulkFileAction('delete', true);
 
+function folderFiles(path) {
+  return files.filter(file => !file.trashed && (file.folder === path || file.folder?.startsWith(path + '/')));
+}
+
+function downloadZip(items) {
+  if (!items.length) return;
+  if (items.length > 2000) {
+    message('Select up to 2,000 files per ZIP download.');
+    return;
+  }
+  byId('archive-selection').value = JSON.stringify(items.map(fileKey));
+  byId('archive-form').submit();
+}
+
+byId('download-selected').onclick = () => downloadZip(files.filter(file =>
+  !file.trashed && selectedFiles.has(fileKey(file))));
+
+async function updateFolder(path, action) {
+  if (bulkBusy) return;
+  const items = folderFiles(path);
+  if (!items.length) return;
+  const pieces = path.split('/');
+  const name = pieces.pop();
+  let destination;
+  let email;
+  if (action === 'share') {
+    email = window.prompt('Share all ' + items.length + ' files in this folder with this email')?.trim();
+    if (!email) return;
+  } else {
+    const newName = window.prompt(action === 'rename' ? 'New folder name' : 'Name for the folder copy',
+      action === 'rename' ? name : 'Copy of ' + name)?.trim();
+    if (!newName || newName === name) return;
+    if (newName === '.' || newName === '..' || /[\/\\\x00-\x1f\x7f]/.test(newName)) {
+      message('Enter a folder name without slashes or control characters.');
+      return;
+    }
+    destination = [...pieces, newName].join('/');
+    if (files.some(file => file.folder === destination || file.folder?.startsWith(destination + '/'))) {
+      message('A folder with that name already exists.');
+      return;
+    }
+  }
+
+  bulkBusy = true;
+  syncSelection();
+  let completed = 0;
+  const links = [];
+  try {
+    for (const file of items) {
+      const fields = action === 'share' ? { email }
+        : { name: file.name, folder: destination + file.folder.slice(path.length) };
+      const result = await runFileAction(file, action, fields);
+      if (result.url) links.push(file.name + ' ' + result.url);
+      completed++;
+    }
+    message(completed + ' files updated.');
+  } catch (error) {
+    message(completed + ' of ' + items.length + ' files updated. ' + error.message);
+  } finally {
+    if (links.length) window.prompt('Send these split-file links to the invited recipient.', links.join(' | '));
+    await refresh().catch(error => message(error.message));
+    bulkBusy = false;
+    syncSelection();
+  }
+}
+
 function renderFiles() {
   const query = byId('search').value.trim().toLowerCase();
   const list = byId('files');
@@ -394,7 +462,13 @@ function renderFiles() {
       actions.push(['Restore folder contents', () => changeFolder(path, 'restore')],
         ['Delete folder contents permanently', () => changeFolder(path, 'delete')]);
     } else {
-      actions.push(['Move folder contents to bin', () => changeFolder(path, 'trash')]);
+      actions.push(
+        ['Download ZIP', () => downloadZip(folderFiles(path))],
+        ['Rename', () => updateFolder(path, 'rename')],
+        ['Make a copy', () => updateFolder(path, 'copy')],
+        ['Share', () => updateFolder(path, 'share')],
+        ['Move folder contents to bin', () => changeFolder(path, 'trash')]
+      );
     }
     item.append(button, actionsMenu(name, actions));
     item.prepend(selectionCheckbox('folder:' + path, 'folder ' + path, available.filter(file =>

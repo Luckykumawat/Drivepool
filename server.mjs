@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { openDatabase } from './database.mjs';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import ZipStream from 'zip-stream';
 
 const origin = new URL(process.env.APP_ORIGIN || 'http://localhost:3000').origin;
 const secure = origin.startsWith('https:');
@@ -257,19 +258,17 @@ function attachment(name) {
     .replace(/['()*]/g, char => '%' + char.charCodeAt(0).toString(16));
 }
 
-async function downloadSplit(res, id, user, connections) {
+async function splitSource(id, user, connections, signal, ownedOnly = false) {
   const [record] = await query('SELECT user_id,manifest FROM @split_files WHERE id=?', id);
   if (!record) fail(404, 'File not found.');
-  const { name, size, parts, trashed, viewers = [] } = JSON.parse(record.manifest);
+  const { name, size, folder, parts, trashed, viewers = [] } = JSON.parse(record.manifest);
   if (record.user_id !== user) {
+    if (ownedOnly) fail(404, 'File not found.');
     const primary = connections.find(account => hash('drivepool-primary:' + account.subject) === user);
     if (!primary || !viewers.includes(primary.email.toLowerCase())) fail(404, 'File not found.');
     connections = await query('SELECT * FROM @drives WHERE user_id=?', record.user_id);
   }
   if (trashed) fail(404, 'File is in the bin.');
-  const controller = new AbortController();
-  res.once('close', () => controller.abort());
-
   const sources = await Promise.all(parts.map(async part => {
     const connection = connections.find(account => account.id === part.connectionId);
     if (!connection) fail(409, 'A Drive needed for this file is disconnected.');
@@ -287,7 +286,7 @@ async function downloadSplit(res, id, user, connections) {
 
   async function* joinParts() {
     for (const part of sources) {
-      const media = await google(part.target + '?alt=media', { headers: part.headers, signal: controller.signal });
+      const media = await google(part.target + '?alt=media', { headers: part.headers, signal });
       if (!media.ok || !media.body) fail(502, 'Drive could not download a file part.');
       let received = 0;
       const checksum = createHash('md5');
@@ -302,12 +301,19 @@ async function downloadSplit(res, id, user, connections) {
     }
   }
 
+  return { name, size, folder, open: () => Readable.from(joinParts()) };
+}
+
+async function downloadSplit(res, id, user, connections) {
+  const controller = new AbortController();
+  res.once('close', () => controller.abort());
+  const { name, size, open } = await splitSource(id, user, connections, controller.signal);
   res.writeHead(200, {
     'Content-Type': 'application/octet-stream',
     'Content-Disposition': attachment(name),
     'Content-Length': size
   });
-  await pipeline(Readable.from(joinParts()), res);
+  await pipeline(open(), res);
 }
 
 const activeFileActions = new Set();
@@ -325,17 +331,107 @@ async function driveMutation(target, token, method, data) {
   return response.json();
 }
 
-async function fileAction(req, res, user, connections, connectionId, id) {
+async function requestText(req, limit) {
   const chunks = [];
   let length = 0;
   for await (const chunk of req.iterator({ destroyOnReturn: false })) {
     length += chunk.length;
-    if (length > 4096) fail(413, 'File action is too large.');
-    chunks.push(chunk);
+    if (length > limit) fail(413, 'Request is too large.');
+    chunks.push(Buffer.from(chunk));
   }
+  return Buffer.concat(chunks).toString();
+}
+
+function archiveComponent(name) {
+  const safe = String(name || '').replace(/[\\/:*?"<>|\x00-\x1f\x7f]/g, '_').replace(/[ .]+$/g, '');
+  return safe && !/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(safe) ? safe : '_' + safe;
+}
+
+async function downloadArchive(req, res, user, connections) {
+  const form = new URLSearchParams(await requestText(req, 300000));
+  let selection;
+  try {
+    selection = JSON.parse(form.get('selection'));
+  } catch {
+    fail(400, 'Invalid ZIP selection.');
+  }
+  if (!Array.isArray(selection) || !selection.length || selection.length > 2000 ||
+      selection.some(key => typeof key !== 'string' || !/^[\w-]{1,200}\/[\w-]{1,200}$/.test(key))) {
+    fail(400, 'Select between 1 and 2,000 files for a ZIP.');
+  }
+
+  const controller = new AbortController();
+  res.once('close', () => controller.abort());
+  const { signal } = controller;
+  const tokens = new Map();
+  async function sourceFor(key) {
+    const [connectionId, id] = key.split('/');
+    if (connectionId === 'split') return splitSource(id, user, connections, signal, true);
+    const account = connections.find(connection => connection.id === connectionId);
+    if (!account) fail(404, 'A selected file is unavailable.');
+    if (!tokens.has(account.id)) tokens.set(account.id, await access(account));
+    const headers = { Authorization: 'Bearer ' + tokens.get(account.id) };
+    const target = driveApi + '/files/' + id;
+    const info = await google(target + '?fields=name,size,description,trashed,appProperties', { headers });
+    if (!info.ok) fail(404, 'A selected file is unavailable.');
+    const file = await info.json();
+    if (file.trashed || file.appProperties?.drivepoolOwner !== user) fail(404, 'A selected file is unavailable.');
+    const folder = file.description?.startsWith('Drivepool folder: ') ? file.description.slice(18) : '';
+    return { ...file, folder, async open() {
+      const media = await google(target + '?alt=media', { headers, signal });
+      if (!media.ok || !media.body) fail(502, 'Drive could not download a selected file.');
+      return Readable.fromWeb(media.body);
+    } };
+  }
+
+  const sources = [];
+  for (const key of new Set(selection)) sources.push(await sourceFor(key));
+  const used = new Set();
+  const paths = sources.map(file => {
+    const folder = (file.folder || '').split('/').filter(Boolean).map(archiveComponent);
+    for (let index = 1; index <= folder.length; index++) used.add(folder.slice(0, index).join('/').toLowerCase());
+    return { prefix: folder.length ? folder.join('/') + '/' : '', name: archiveComponent(file.name) };
+  });
+  const zip = new ZipStream({ store: true, forceZip64: true });
+  res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': attachment('Drivepool.zip') });
+  const transfer = pipeline(zip, res);
+  transfer.catch(error => controller.abort(error));
+  try {
+    for (const [index, file] of sources.entries()) {
+      const { prefix, name } = paths[index];
+      let path = prefix + name;
+      let suffix = 2;
+      const dot = name.lastIndexOf('.');
+      const stem = dot > 0 ? name.slice(0, dot) : name;
+      const extension = dot > 0 ? name.slice(dot) : '';
+      while (used.has(path.toLowerCase())) path = prefix + stem + ' (' + suffix++ + ')' + extension;
+      used.add(path.toLowerCase());
+      const stream = await file.open();
+      signal.throwIfAborted();
+      const entry = new Promise((resolve, reject) => {
+        stream.once('error', reject);
+        zip.entry(stream, { name: path, store: true }, error => error ? reject(error) : resolve());
+      });
+      try {
+        await Promise.race([entry, transfer]);
+      } finally {
+        stream.destroy();
+      }
+    }
+    zip.finish();
+    await transfer;
+  } catch (error) {
+    zip.destroy(error);
+    await transfer.catch(() => {});
+    throw error;
+  }
+}
+
+async function fileAction(req, res, user, connections, connectionId, id) {
+  const body = await requestText(req, 8192);
   let fields;
   try {
-    fields = JSON.parse(Buffer.concat(chunks).toString());
+    fields = JSON.parse(body);
   } catch {
     fail(400, 'Invalid file action.');
   }
@@ -349,6 +445,12 @@ async function fileAction(req, res, user, connections, connectionId, id) {
   if (action === 'share' && (!emailAddress || emailAddress.length > 254 ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress))) fail(400, 'Enter a valid recipient email.');
 
+  const destination = fields.folder;
+  if (destination !== undefined && (!['rename', 'copy'].includes(action) || typeof destination !== 'string' ||
+      !destination || destination.length > 1000 || /[\\\x00-\x1f\x7f]/.test(destination) ||
+      destination.split('/').some(segment => !segment || segment === '.' || segment === '..'))) {
+    fail(400, 'Invalid folder path.');
+  }
   const fromBin = action === 'restore' || action === 'delete';
   const lock = user + '/' + connectionId + '/' + id;
   if (activeFileActions.has(lock)) fail(409, 'Another action is already running for this file.');
@@ -369,7 +471,7 @@ async function fileAction(req, res, user, connections, connectionId, id) {
       }
       if (action === 'rename') {
         await query('UPDATE @split_files SET manifest=? WHERE id=? AND user_id=?',
-          JSON.stringify({ ...file, name }), id, user);
+          JSON.stringify({ ...file, name, ...(destination && { folder: destination }) }), id, user);
         return json(res, 200, { ok: true });
       }
 
@@ -433,7 +535,7 @@ async function fileAction(req, res, user, connections, connectionId, id) {
             JSON.stringify({ ...file, trashed: true }), id, user);
         } else {
           await query('INSERT INTO @split_files (id,user_id,manifest) VALUES (?,?,?)', copyId, user, JSON.stringify({
-            ...file, viewers: [], name: copyName(file.name), createdTime: new Date().toISOString(), parts: changes.map(change => change.part)
+            ...file, viewers: [], name: destination ? file.name : copyName(file.name), ...(destination && { folder: destination }), createdTime: new Date().toISOString(), parts: changes.map(change => change.part)
           }));
         }
       } catch (error) {
@@ -459,11 +561,15 @@ async function fileAction(req, res, user, connections, connectionId, id) {
     if (Boolean(file.trashed) !== fromBin) fail(409, 'The file changed. Refresh and try again.');
     if (action === 'restore') await driveMutation(target, token, 'PATCH', { trashed: false });
     if (action === 'delete') await deleteDriveFile(target, token);
-    if (action === 'rename') await driveMutation(target, token, 'PATCH', { name });
+    if (action === 'rename') await driveMutation(target, token, 'PATCH', {
+      name, ...(destination && { description: 'Drivepool folder: ' + destination })
+    });
     if (action === 'trash') await driveMutation(target, token, 'PATCH', { trashed: true });
     if (action === 'copy') {
       await driveMutation(target + '/copy', token, 'POST', {
-        name: copyName(file.name), description: file.description, appProperties: properties(user)
+        name: destination ? file.name : copyName(file.name),
+        description: destination ? 'Drivepool folder: ' + destination : file.description,
+        appProperties: properties(user)
       });
     }
     if (action === 'share') {
@@ -595,6 +701,9 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
           connections.find(connection => connection.id === part.connectionId)?.email).filter(Boolean) };
       });
       return json(res, 200, { accounts, splitFiles });
+    }
+    if (path === '/api/download-zip' && req.method === 'POST') {
+      return await downloadArchive(req, res, user, connections);
     }
     if (path === '/api/upload' && req.method === 'POST') return await upload(req, res, url, user, connections);
     const actionMatch = path.match(/^\/api\/file-action\/([\w-]+)\/([\w-]+)$/);

@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7f4ff">
+  <meta name="theme-color" content="#f8fafd">
   <title>Drivepool — Your drives, together</title>
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icon-192.png?v=2">
-  <link rel="icon" href="/icon-192.png?v=2">
+  <link rel="apple-touch-icon" href="/icon-192.png?v=3">
+  <link rel="icon" href="/icon-192.png?v=3">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" type="module"></script>
 </head>
 <body>
   <header class="shell top">
-    <a class="brand" href="/"><img src="/icon-192.png?v=2" alt=""> Drivepool</a>
+    <a class="brand" href="/"><img src="/icon-192.png?v=3" alt=""> Drivepool</a>
     <div class="actions">
       <button id="install" type="button">Install app</button>
       <form id="logout" action="/api/logout" method="post" hidden><button>Sign out</button></form>
@@ -58,11 +58,15 @@
         <div id="selection-actions" class="bin-actions" aria-label="Bulk file actions">
           <button id="select-all-files" type="button">Select all</button>
           <span id="bin-selection-count" aria-live="polite"></span>
+          <button id="download-selected" type="button">Download selected</button>
           <button id="move-selected-to-bin" type="button" class="danger">Move selected to bin</button>
           <button id="restore-selected" type="button" hidden>Restore selected</button>
           <button id="delete-selected" type="button" hidden class="danger">Delete selected permanently</button>
           <button id="empty-bin" type="button" hidden class="danger">Empty bin</button>
         </div>
+        <form id="archive-form" action="/api/download-zip" method="post" hidden>
+          <input name="selection" id="archive-selection" type="hidden">
+        </form>
         <nav id="breadcrumbs" aria-label="Current folder"></nav>
         <progress id="progress" max="100" aria-label="Upload progress" hidden></progress>
         <p id="empty" class="empty-state" hidden>No files uploaded yet.</p>
