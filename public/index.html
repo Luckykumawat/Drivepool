@@ -8,8 +8,8 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png?v=3">
   <link rel="icon" href="/icon-192.png?v=3">
-  <link rel="stylesheet" href="/style.css?v=16">
-  <script src="/app.js?v=17" type="module"></script>
+  <link rel="stylesheet" href="/style.css?v=18">
+  <script src="/app.js?v=18" type="module"></script>
 </head>
 <body>
   <header class="shell top">
@@ -69,15 +69,14 @@
         <input type="file" id="folder" webkitdirectory multiple hidden>
         <div id="selection-actions" hidden class="bin-actions" aria-label="Bulk file actions">
           <button id="clear-selection" type="button" aria-label="Clear selection" title="Clear selection">×</button>
-          <span id="bin-selection-count" aria-live="polite"></span>
-          <button id="share-selected" type="button" hidden>Share</button>
-          <button id="rename-selected" type="button" hidden>Rename</button>
-          <button id="copy-selected" type="button" hidden>Make a copy</button>
-          <button id="select-all-files" type="button">Select all</button>
-          <button id="download-selected" type="button">Download selected</button>
-          <button id="move-selected-to-bin" type="button" class="danger">Move selected to bin</button>
-          <button id="restore-selected" type="button" hidden>Restore selected</button>
-          <button id="delete-selected" type="button" hidden class="danger">Delete selected permanently</button>
+          <span id="bin-selection-count" aria-live="polite"><span id="selection-number" aria-hidden="true"></span><span id="selection-label" class="visually-hidden"></span></span>
+          <button id="share-selected" type="button" hidden aria-label="Share" title="Share"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 8a3 3 0 1 0-6 0 3 3 0 0 0 6 0ZM4 20v-2a4 4 0 0 1 4-4h7m4-3v8m-4-4h8"/></svg></button>
+          <button id="rename-selected" type="button" hidden aria-label="Rename" title="Rename"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-1 5 5-1L20 8l-4-4L4 16Zm9-9 4 4"/></svg></button>
+          <button id="copy-selected" type="button" hidden aria-label="Make a copy" title="Make a copy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h12v12H8zM4 16V4h12"/></svg></button>
+          <button id="download-selected" type="button" aria-label="Download selected" title="Download selected"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/></svg></button>
+          <button id="move-selected-to-bin" type="button" class="danger" aria-label="Move selected to bin" title="Move selected to bin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></svg></button>
+          <button id="restore-selected" type="button" hidden aria-label="Restore selected" title="Restore selected"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 1 3 7m-3-7V5m0 7h7m2-5v6l4 2"/></svg></button>
+          <button id="delete-selected" type="button" hidden class="danger" aria-label="Delete selected permanently" title="Delete selected permanently"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15m-8-5 4 4m0-4-4 4"/></svg></button>
         </div>
         <div class="bin-actions" id="bin-tools" hidden>
           <button id="empty-bin" type="button" hidden class="danger">Empty bin</button>

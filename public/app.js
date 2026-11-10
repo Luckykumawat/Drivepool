@@ -114,7 +114,6 @@ let files = [];
 let showingBin = false;
 let bulkBusy = false;
 const selectedFiles = new Set();
-let visibleSelectionFiles = [];
 let selectionCards = [];
 let selectionAnchor = null;
 let currentFolder = '';
@@ -305,12 +304,8 @@ function syncSelection() {
     button.disabled = bulkBusy;
     button.onclick = single ? () => single.act(action) : null;
   }
-  const allVisibleSelected = visibleSelectionFiles.length > 0 &&
-    visibleSelectionFiles.every(file => selectedFiles.has(fileKey(file)));
   byId('selection-actions').hidden = !selected.length;
   byId('bin-tools').hidden = !showingBin;
-  byId('select-all-files').textContent = allVisibleSelected ? 'Deselect all' : 'Select all';
-  byId('select-all-files').disabled = bulkBusy || !visibleSelectionFiles.length;
   byId('download-selected').hidden = showingBin;
   byId('download-selected').disabled = bulkBusy || !selected.length;
   byId('move-selected-to-bin').hidden = showingBin;
@@ -319,7 +314,9 @@ function syncSelection() {
   byId('restore-selected').disabled = bulkBusy || !selected.length || selected.some(file => file.purging);
   byId('delete-selected').disabled = bulkBusy || !selected.length;
   byId('empty-bin').disabled = bulkBusy || !available.length;
-  byId('bin-selection-count').textContent = (single ? 1 : selected.length) + ' selected';
+  const count = single ? 1 : selected.length;
+  byId('selection-number').textContent = count;
+  byId('selection-label').textContent = count + ' selected';
 }
 
 function setupSelectionCard(card, rowKey, name, items, act) {
@@ -369,16 +366,6 @@ document.querySelector('.workspace-main').addEventListener('click', event => {
   if (event.target.closest('.file-item, .folder-item, button, input, a, label, summary')) return;
   clearSelection();
 });
-
-byId('select-all-files').onclick = () => {
-  const keys = visibleSelectionFiles.map(fileKey);
-  const clear = keys.every(key => selectedFiles.has(key));
-  for (const key of keys) {
-    if (clear) selectedFiles.delete(key);
-    else selectedFiles.add(key);
-  }
-  syncSelection();
-};
 
 async function bulkFileAction(action, empty = false) {
   if (bulkBusy) return;
@@ -542,9 +529,6 @@ function renderFiles() {
     if (!availableKeys.has(key)) selectedFiles.delete(key);
   }
   selectionCards = [];
-  visibleSelectionFiles = available.filter(file =>
-    visibleFiles.includes(file) || (file.folder || '').split('/').some((_, index, segments) =>
-      folders.has(segments.slice(0, index + 1).join('/'))));
 
   const folderRows = [...folders].sort().map(path => {
     const name = path.split('/').at(-1);
@@ -597,6 +581,19 @@ function renderFiles() {
     const nameLabel = item.querySelector('strong');
     nameLabel.className = 'file-name';
     nameLabel.title = file.name;
+    const footer = item.querySelector('small');
+    footer.className = 'file-owner';
+    footer.title = account;
+    footer.replaceChildren();
+    const initial = document.createElement('span');
+    initial.className = 'owner-initial';
+    initial.setAttribute('aria-hidden', 'true');
+    initial.textContent = account.charAt(0).toUpperCase();
+    const email = document.createElement('span');
+    email.className = 'owner-email';
+    email.textContent = account;
+    footer.append(initial, email);
+    item.append(footer);
     if (kind === 'Image') nameLabel.prepend(typeIcon('image'));
     setupSelectionCard(item, fileKey(file), file.name, [file], action => changeFile(file, action));
     if (!showingBin && file.hasThumbnail) {
