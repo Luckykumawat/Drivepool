@@ -12,7 +12,7 @@ const themeColors = new Map([
 ]);
 
 function applyTheme(theme) {
-  const selected = themeColors.has(theme) ? theme : 'studio';
+  const selected = themeColors.has(theme) ? theme : 'classic-blue';
   document.documentElement.dataset.theme = selected;
   themeSelect.value = selected;
   document.querySelector('.brand img').src =
@@ -740,7 +740,9 @@ try {
   }
   if (outcome) history.replaceState(null, '', '/');
   byId('logout').hidden = !signedIn;
-  byId('open-storage').hidden = !signedIn;
+  byId('header-search').hidden = !signedIn;
+  byId('welcome').hidden = signedIn;
+  if (signedIn) byId('dashboard').after(connect);
   byId('library').hidden = !signedIn;
   document.body.classList.toggle('signed-in', signedIn);
   if (signedIn) await refresh();

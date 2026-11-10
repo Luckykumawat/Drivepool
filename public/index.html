@@ -1,19 +1,23 @@
 <!doctype html>
-<html lang="en" data-theme="studio">
+<html lang="en" data-theme="classic-blue">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f3f5fc">
+  <meta name="theme-color" content="#f8fafd">
   <title>Drivepool — Your drives, together</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png?v=3">
   <link rel="icon" href="/icon-192.png?v=3">
-  <link rel="stylesheet" href="/style.css?v=13">
-  <script src="/app.js?v=13" type="module"></script>
+  <link rel="stylesheet" href="/style.css?v=14">
+  <script src="/app.js?v=14" type="module"></script>
 </head>
 <body>
   <header class="shell top">
     <a class="brand" href="/"><img src="/icon-192.png?v=3" alt=""> Drivepool</a>
+    <div id="header-search" hidden>
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg>
+      <input type="search" id="search" aria-label="Search files and folders" placeholder="Search files and folders">
+    </div>
     <div class="actions">
       <label class="theme-control">Theme
         <select id="theme-select">
@@ -26,7 +30,6 @@
           <option value="forest-lime">Forest Lime</option>
         </select>
       </label>
-      <button id="open-storage" type="button" aria-haspopup="dialog" aria-controls="storage-drawer" hidden>Storage details</button>
       <button id="install" type="button">Install app</button>
       <form id="logout" action="/api/logout" method="post" hidden><button>Sign out</button></form>
     </div>
@@ -43,7 +46,6 @@
     <p id="message" class="notice" role="status" hidden></p>
       <section id="library" hidden>
         <aside class="workspace-sidebar" aria-label="Workspace navigation">
-          <span class="workspace-label">Workspace</span>
         <details id="upload-actions" class="item-actions new-upload">
           <summary class="primary">+ New</summary>
           <div class="action-panel">
@@ -56,13 +58,12 @@
           <button id="show-library" aria-pressed="true"><span aria-hidden="true">▤</span> My files</button>
           <button id="show-bin" aria-pressed="false"><span aria-hidden="true">▱</span> Bin</button>
         </div>
+          <button id="open-storage" type="button" aria-haspopup="dialog" aria-controls="storage-drawer"><span aria-hidden="true">☁</span> Storage</button>
         </aside>
         <div class="workspace-main">
         <div class="workspace-heading">
           <div><h2 id="library-title">Your files</h2><p id="library-description">Drop files here or use + New to upload.</p></div>
-        <div class="file-toolbar">
-          <input type="search" id="search" aria-label="Search files and folders" placeholder="Search files and folders">
-        </div>
+
         </div>
         <input type="file" id="file" multiple hidden>
         <input type="file" id="folder" webkitdirectory multiple hidden>
