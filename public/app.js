@@ -271,7 +271,6 @@ function showBin(value) {
   selectionAnchor = null;
   byId('show-library').setAttribute('aria-pressed', String(!value));
   byId('show-bin').setAttribute('aria-pressed', String(value));
-  byId('library-title').textContent = value ? 'Bin' : 'Your files';
   byId('library-description').textContent = value
     ? 'Restore files to their original folder or delete them permanently.'
     : 'Drop files here or use + New to upload.';
@@ -497,11 +496,27 @@ function renderFiles() {
   const breadcrumbs = byId('breadcrumbs');
   breadcrumbs.replaceChildren();
   const parts = currentFolder ? currentFolder.split('/') : [];
-  for (const [index, name] of [showingBin ? 'Bin' : 'All files', ...parts].entries()) {
-    const button = document.createElement('button');
-    button.textContent = name;
-    button.onclick = () => openFolder(parts.slice(0, index).join('/'));
-    breadcrumbs.append(button);
+  const trail = [showingBin ? 'Bin' : 'Your files', ...parts];
+  for (const [index, name] of trail.entries()) {
+    if (index > 0) {
+      const separator = document.createElement('span');
+      separator.className = 'breadcrumb-separator';
+      separator.setAttribute('aria-hidden', 'true');
+      separator.textContent = '›';
+      breadcrumbs.append(separator);
+    }
+    if (index === trail.length - 1) {
+      const heading = document.createElement('h2');
+      heading.textContent = name;
+      heading.setAttribute('aria-current', 'location');
+      breadcrumbs.append(heading);
+    } else {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = name;
+      button.onclick = () => openFolder(parts.slice(0, index).join('/'));
+      breadcrumbs.append(button);
+    }
   }
 
   const folders = new Set();

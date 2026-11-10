@@ -584,3 +584,19 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
   font-weight: 700;
 }
 .owner-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.workspace-heading #breadcrumbs {
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+}
+.workspace-heading #breadcrumbs button {
+  padding: 3px 5px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+.workspace-heading #breadcrumbs button:hover { background: var(--hover-tile); color: var(--ink); }
+.breadcrumb-separator { color: var(--muted); font-size: 1.25rem; }
+.workspace-heading #breadcrumbs h2 { overflow-wrap: anywhere; }

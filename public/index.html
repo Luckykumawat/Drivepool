@@ -8,8 +8,8 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png?v=3">
   <link rel="icon" href="/icon-192.png?v=3">
-  <link rel="stylesheet" href="/style.css?v=18">
-  <script src="/app.js?v=18" type="module"></script>
+  <link rel="stylesheet" href="/style.css?v=19">
+  <script src="/app.js?v=19" type="module"></script>
 </head>
 <body>
   <header class="shell top">
@@ -62,7 +62,7 @@
         </aside>
         <div class="workspace-main">
         <div class="workspace-heading">
-          <div><h2 id="library-title">Your files</h2><p id="library-description">Drop files here or use + New to upload.</p></div>
+          <div><nav id="breadcrumbs" aria-label="Folder path"><h2>Your files</h2></nav><p id="library-description">Drop files here or use + New to upload.</p></div>
 
         </div>
         <input type="file" id="file" multiple hidden>
@@ -84,7 +84,6 @@
         <form id="archive-form" action="/api/download-zip" method="post" hidden>
           <input name="selection" id="archive-selection" type="hidden">
         </form>
-        <nav id="breadcrumbs" aria-label="Current folder"></nav>
         <div id="upload-status" class="upload-status" hidden>
           <div><span id="upload-current"></span><strong id="upload-percent">0%</strong></div>
           <progress id="progress" max="100" aria-label="Upload progress"></progress>
