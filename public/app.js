@@ -11,7 +11,7 @@ const themeColors = new Map([
 ]);
 
 function applyTheme(theme) {
-  const selected = themeColors.has(theme) ? theme : 'amber';
+  const selected = themeColors.has(theme) ? theme : 'forest-lime';
   document.documentElement.dataset.theme = selected;
   themeSelect.value = selected;
   document.querySelector('.brand img').src =
@@ -103,10 +103,6 @@ let visibleSelectionFiles = [];
 let selectionCheckboxes = [];
 let selectionAnchor = null;
 let currentFolder = '';
-let view = 'grid';
-try {
-  if (localStorage.getItem('drivepool-view') === 'list') view = 'list';
-} catch {}
 
 function fileKind(file) {
   const type = file.mimeType || '';
@@ -435,10 +431,8 @@ async function updateFolder(path, action) {
 function renderFiles() {
   const query = byId('search').value.trim().toLowerCase();
   const list = byId('files');
-  list.dataset.view = view;
-  byId('folders').dataset.view = view;
-  byId('list-view').setAttribute('aria-pressed', String(view === 'list'));
-  byId('grid-view').setAttribute('aria-pressed', String(view === 'grid'));
+  list.dataset.view = 'grid';
+  byId('folders').dataset.view = 'grid';
 
   const breadcrumbs = byId('breadcrumbs');
   breadcrumbs.replaceChildren();
@@ -524,8 +518,11 @@ function renderFiles() {
     const account = file.split ? (file.driveEmails || []).join(', ') || 'Multiple Drives' : file.account.email;
     const item = row(icon + ' ' + file.name, account, actionsMenu(file.name, actions));
     item.className = 'file-item';
+    const nameLabel = item.querySelector('strong');
+    nameLabel.className = 'file-name';
+    nameLabel.title = file.name;
     item.prepend(selectionCheckbox(fileKey(file), file.name, [file]));
-    if (!showingBin && view === 'grid' && file.hasThumbnail) {
+    if (!showingBin && file.hasThumbnail) {
       const preview = document.createElement('img');
       preview.className = 'file-preview';
       preview.alt = '';
@@ -547,13 +544,6 @@ function renderFiles() {
 }
 
 byId('search').oninput = renderFiles;
-for (const layout of ['grid', 'list']) {
-  byId(layout + '-view').onclick = () => {
-    view = layout;
-    try { localStorage.setItem('drivepool-view', view); } catch {}
-    renderFiles();
-  };
-}
 
 function sendFile(file, folder, completed, total) {
   return new Promise((resolve, reject) => {
@@ -577,10 +567,14 @@ const storageDrawer = byId('storage-drawer');
 byId('open-storage').onclick = () => storageDrawer.showModal();
 
 byId('refresh').onclick = () => refresh().catch(error => message(error.message));
-upload.onclick = () => chooser.click();
+function openUploadPicker(input) {
+  byId('upload-actions').open = false;
+  input.click();
+}
+upload.onclick = () => openUploadPicker(chooser);
 const folderChooser = byId('folder');
 const uploadFolder = byId('choose-folder');
-uploadFolder.onclick = () => folderChooser.click();
+uploadFolder.onclick = () => openUploadPicker(folderChooser);
 
 async function uploadSelection(event) {
   const input = event.currentTarget;
@@ -676,8 +670,6 @@ try {
   if (outcome) history.replaceState(null, '', '/');
   byId('logout').hidden = !signedIn;
   byId('open-storage').hidden = !signedIn;
-  byId('welcome').hidden = signedIn;
-  if (signedIn) byId('drive-connect').append(connect);
   byId('library').hidden = !signedIn;
   if (signedIn) await refresh();
 } catch (error) {

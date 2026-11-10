@@ -1,19 +1,19 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="forest-lime">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f8f4eb">
+  <meta name="theme-color" content="#f3f6ef">
   <title>Drivepool — Your drives, together</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png?v=3">
   <link rel="icon" href="/icon-192.png?v=3">
-  <link rel="stylesheet" href="/style.css?v=9">
-  <script src="/app.js?v=9" type="module"></script>
+  <link rel="stylesheet" href="/style.css?v=10">
+  <script src="/app.js?v=10" type="module"></script>
 </head>
 <body>
   <header class="shell top">
-    <a class="brand" href="/"><img src="/icon-192.png?v=3" alt=""> Drivepool</a>
+    <a class="brand" href="/"><img src="/icon-forest.png" alt=""> Drivepool</a>
     <div class="actions">
       <label class="theme-control">Theme
         <select id="theme-select">
@@ -41,7 +41,14 @@
     </div>
     <p id="message" class="notice" role="status" hidden></p>
       <section class="card panel" id="library" hidden>
-        <div class="panel-heading"><div><h2 id="library-title">Your files</h2><p id="library-description">Manage files from all your connected Drives.</p></div><div class="actions" id="upload-actions"><button id="choose-folder">Upload folder</button><button class="primary" id="choose">Upload files</button></div></div>
+        <details id="upload-actions" class="item-actions new-upload">
+          <summary class="primary">+ New</summary>
+          <div class="action-panel">
+            <button id="choose" type="button">Upload files</button>
+            <button id="choose-folder" type="button">Upload folder</button>
+          </div>
+        </details>
+        <div class="panel-heading"><div><h2 id="library-title">Your files</h2><p id="library-description">Manage files from all your connected Drives.</p></div></div>
         <input type="file" id="file" multiple hidden>
         <input type="file" id="folder" webkitdirectory multiple hidden>
         <div class="library-controls">
@@ -51,10 +58,6 @@
         </div>
         <div class="file-toolbar">
           <input type="search" id="search" aria-label="Search files and folders" placeholder="Search files and folders">
-          <div class="actions" role="group" aria-label="File layout">
-            <button id="list-view" aria-pressed="false">List</button>
-            <button id="grid-view" aria-pressed="true">Grid</button>
-          </div>
         </div>
         </div>
         <div id="selection-actions" hidden class="bin-actions" aria-label="Bulk file actions">
@@ -100,7 +103,6 @@
         <ul id="accounts"></ul>
       </section>
     </div>
-    <div id="drive-connect"></div>
   </dialog>
   <dialog id="install-guide">
     <h2>Install Drivepool</h2>

@@ -312,3 +312,14 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
 }
 .library-controls #search { width: min(200px, 100%); flex: 0 1 auto; }
 #bin-tools .danger { color: var(--danger); }
+
+.new-upload { display: table; margin-bottom: 12px; }
+.new-upload summary { display: block; padding: 8px 16px; font-size: .95rem; font-weight: 700; }
+.new-upload .action-panel { left: 0; right: auto; }
+.new-upload .action-panel button:last-child { color: var(--ink); }
+.file-name, #folders[data-view="grid"] .folder-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
