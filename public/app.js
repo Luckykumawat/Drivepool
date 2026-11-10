@@ -18,10 +18,10 @@ async function read(url, options) {
 
 function bytes(size) {
   if (size == null) return 'Unknown';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const unit = Math.min(4, Math.floor(Math.log10(Math.max(1, size)) / 3));
+  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+  const unit = Math.min(4, Math.floor(Math.log2(Math.max(1, size)) / 10));
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
-    .format(size / 1000 ** unit) + ' ' + units[unit];
+    .format(size / 1024 ** unit) + ' ' + units[unit];
 }
 
 function row(title, detail, action) {

@@ -30,11 +30,11 @@
     <div id="dashboard" hidden>
       <section class="metrics" aria-label="Storage summary">
         <div class="card"><span id="free-label">Total free space</span><strong id="free">—</strong></div>
-        <div class="card"><span>Largest single upload</span><strong id="largest">—</strong></div>
+        <div class="card"><span>Largest single upload</span><strong id="largest">—</strong><small>One file must fit on one Drive.</small></div>
         <div class="card"><span>Connected drives</span><strong id="count">—</strong></div>
       </section>
       <section class="card panel">
-        <div class="panel-heading"><div><h2>Connected drives</h2><p>Free space includes usage across your Google account.</p></div><button id="refresh">Refresh</button></div>
+        <div class="panel-heading"><div><h2>Connected drives</h2><p>Free space accounts for usage across Google services. Google’s 15 GB allowance is shown here as 15 GiB (1 GiB = 1,073,741,824 bytes).</p></div><button id="refresh">Refresh</button></div>
         <ul id="accounts"></ul>
       </section>
       <section class="card panel">
