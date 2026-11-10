@@ -27,9 +27,11 @@ export async function openDatabase(url) {
     pool.on('error', () => console.error('An idle Postgres connection closed unexpectedly.'));
     try {
       await pool.query(readFileSync(new URL('./postgres.sql', import.meta.url), 'utf8'));
-    } catch {
+    } catch (error) {
       await pool.end();
-      throw new Error('Postgres initialization failed. Check DATABASE_URL, TLS and schema permissions.');
+      const code = typeof error.code === 'string' && /^[A-Z0-9_]{2,64}$/.test(error.code)
+        ? error.code : 'NO_ERROR_CODE';
+      throw new Error(`Postgres initialization failed (${code}). Check DATABASE_URL, TLS and schema permissions.`);
     }
 
     return async (sql, ...parameters) => {
