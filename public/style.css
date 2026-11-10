@@ -420,3 +420,19 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
 }
 
 .upload-hint { padding: 0 10px 6px; font-size: .72rem; }
+
+.file-drag-active .workspace-main {
+  outline: 2px dashed var(--accent);
+  outline-offset: -5px;
+  background: var(--raised);
+}
+.upload-status {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+}
+.upload-status div { display: flex; justify-content: space-between; gap: 12px; }
+#upload-current { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upload-status progress { display: block; margin-top: 8px; }

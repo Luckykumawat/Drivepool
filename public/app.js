@@ -74,11 +74,25 @@ function storageBadge(free) {
   return badge;
 }
 
+let dashboardRequest = 0;
+let followUpRefresh;
+async function refreshAfterChange() {
+  clearTimeout(followUpRefresh);
+  try {
+    await refresh();
+  } finally {
+    clearTimeout(followUpRefresh);
+    followUpRefresh = setTimeout(() => refresh().catch(() => {}), 1800);
+  }
+}
+
 async function refresh() {
+  const request = ++dashboardRequest;
   const button = byId('refresh');
   button.disabled = true;
   try {
     const { accounts, splitFiles = [] } = await read('/api/dashboard');
+    if (request !== dashboardRequest) return;
     const measured = accounts.filter(account => account.free != null);
     byId('free-label').textContent = measured.length === accounts.length ? 'Total free space' : 'Known free space';
     byId('free').textContent = measured.length ? bytes(measured.reduce((sum, account) => sum + account.free, 0)) : '—';
@@ -92,7 +106,7 @@ async function refresh() {
       .sort((a, b) => String(b.createdTime).localeCompare(String(a.createdTime)));
     renderFiles();
   } finally {
-    button.disabled = false;
+    if (request === dashboardRequest) button.disabled = false;
   }
 }
 
@@ -206,7 +220,7 @@ async function changeFile(file, action) {
   } catch (error) {
     message(error.message);
   }
-  await refresh().catch(error => message(error.message));
+  await refreshAfterChange().catch(error => message(error.message));
 }
 
 async function changeFolder(path, action) {
@@ -231,7 +245,7 @@ async function changeFolder(path, action) {
   } catch (error) {
     message(completed + ' of ' + nested.length + ' files ' + outcome + '. ' + error.message);
   }
-  await refresh().catch(error => message(error.message));
+  await refreshAfterChange().catch(error => message(error.message));
 }
 
 function showBin(value) {
@@ -243,7 +257,7 @@ function showBin(value) {
   byId('library-title').textContent = value ? 'Bin' : 'Your files';
   byId('library-description').textContent = value
     ? 'Restore files to their original folder or delete them permanently.'
-    : 'Manage files from all your connected Drives.';
+    : 'Drop files here or use + New to upload.';
   byId('upload-actions').hidden = value;
   openFolder('');
 }
@@ -345,7 +359,7 @@ async function bulkFileAction(action, empty = false) {
       }
     }
     try {
-      await refresh();
+      await refreshAfterChange();
     } catch (error) {
       firstError ??= 'Could not refresh the Bin and storage. ' + error.message;
     }
@@ -423,7 +437,7 @@ async function updateFolder(path, action) {
     message(completed + ' of ' + items.length + ' files updated. ' + error.message);
   } finally {
     if (links.length) window.prompt('Send these split-file links to the invited recipient.', links.join(' | '));
-    await refresh().catch(error => message(error.message));
+    await refreshAfterChange().catch(error => message(error.message));
     bulkBusy = false;
     syncSelection();
   }
@@ -553,7 +567,7 @@ function sendFile(file, folder, completed, total) {
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
     xhr.responseType = 'json';
     xhr.upload.onprogress = event => {
-      if (event.lengthComputable) progress.value = (completed + event.loaded) / total * 100;
+      if (event.lengthComputable) updateUploadProgress((completed + event.loaded) / total * 100);
     };
     xhr.onload = () => {
       if (xhr.status === 201) resolve(xhr.response);
@@ -586,11 +600,50 @@ const folderChooser = byId('folder');
 const uploadFolder = byId('choose-folder');
 uploadFolder.onclick = () => openUploadPicker(folderChooser);
 
+const uploadStatus = byId('upload-status');
+const uploadPercent = byId('upload-percent');
+const library = byId('library');
+
+function updateUploadProgress(value) {
+  progress.value = value;
+  uploadPercent.textContent = Math.floor(value) + '%';
+}
+
+function isFileDrag(event) {
+  return event.dataTransfer?.types.includes('Files');
+}
+
+for (const type of ['dragover', 'drop']) {
+  window.addEventListener(type, event => {
+    if (isFileDrag(event)) event.preventDefault();
+  });
+}
+
+library.addEventListener('dragover', event => {
+  if (!isFileDrag(event) || showingBin || upload.disabled) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'copy';
+  library.classList.add('file-drag-active');
+});
+library.addEventListener('dragleave', event => {
+  if (!library.contains(event.relatedTarget)) library.classList.remove('file-drag-active');
+});
+library.addEventListener('drop', event => {
+  library.classList.remove('file-drag-active');
+  if (!isFileDrag(event) || showingBin || upload.disabled) return;
+  event.preventDefault();
+  const items = Array.from(event.dataTransfer.items);
+  const folders = new Set(items.filter(item => item.webkitGetAsEntry?.()?.isDirectory).map(item => item.getAsFile()?.name));
+  const dropped = Array.from(event.dataTransfer.files).filter(file => !folders.has(file.name));
+  if (!dropped.length && folders.size) message('Use + New → Upload folder for folders.');
+  void uploadFiles(dropped);
+});
+
 async function uploadFiles(selected) {
   if (!selected.length || upload.disabled || showingBin) return;
   upload.disabled = uploadFolder.disabled = true;
-  progress.value = 0;
-  progress.hidden = false;
+  updateUploadProgress(0);
+  uploadStatus.hidden = false;
   const total = selected.reduce((sum, file) => sum + file.size, 0) || 1;
   const destinationFolder = currentFolder;
   const failures = [];
@@ -601,7 +654,7 @@ async function uploadFiles(selected) {
     for (const [index, file] of selected.entries()) {
       const relativeFolder = (file.webkitRelativePath || '').split('/').slice(0, -1).join('/');
       const folder = [destinationFolder, relativeFolder].filter(Boolean).join('/');
-      message('Uploading ' + (index + 1) + ' of ' + selected.length + ' · ' + file.name + '…');
+      byId('upload-current').textContent = 'Uploading ' + (index + 1) + ' of ' + selected.length + ' · ' + file.name;
       try {
         result = await sendFile(file, folder, completed, total);
         count++;
@@ -609,7 +662,7 @@ async function uploadFiles(selected) {
         failures.push(file.name + ': ' + error.message);
       }
       completed += file.size;
-      progress.value = completed / total * 100;
+      updateUploadProgress(completed / total * 100);
     }
     const summary = failures.length
       ? count + ' of ' + selected.length + ' files saved. ' + failures.join(' · ')
@@ -617,14 +670,14 @@ async function uploadFiles(selected) {
         : result.split ? 'Saved across ' + result.parts + ' Drives. Download returns the original file.'
           : 'Saved to ' + result.account + '.';
     try {
-      await refresh();
+      await refreshAfterChange();
       message(summary);
     } catch (error) {
       message(summary + ' Could not refresh the file list. ' + error.message);
     }
   } finally {
     upload.disabled = uploadFolder.disabled = false;
-    progress.hidden = true;
+    uploadStatus.hidden = true;
   }
 }
 

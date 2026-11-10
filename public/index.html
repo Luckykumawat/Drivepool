@@ -8,8 +8,8 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png?v=3">
   <link rel="icon" href="/icon-192.png?v=3">
-  <link rel="stylesheet" href="/style.css?v=12">
-  <script src="/app.js?v=12" type="module"></script>
+  <link rel="stylesheet" href="/style.css?v=13">
+  <script src="/app.js?v=13" type="module"></script>
 </head>
 <body>
   <header class="shell top">
@@ -59,7 +59,7 @@
         </aside>
         <div class="workspace-main">
         <div class="workspace-heading">
-          <div><h2 id="library-title">Your files</h2><p id="library-description">Manage files from all your connected Drives.</p></div>
+          <div><h2 id="library-title">Your files</h2><p id="library-description">Drop files here or use + New to upload.</p></div>
         <div class="file-toolbar">
           <input type="search" id="search" aria-label="Search files and folders" placeholder="Search files and folders">
         </div>
@@ -81,7 +81,10 @@
           <input name="selection" id="archive-selection" type="hidden">
         </form>
         <nav id="breadcrumbs" aria-label="Current folder"></nav>
-        <progress id="progress" max="100" aria-label="Upload progress" hidden></progress>
+        <div id="upload-status" class="upload-status" hidden>
+          <div><span id="upload-current"></span><strong id="upload-percent">0%</strong></div>
+          <progress id="progress" max="100" aria-label="Upload progress"></progress>
+        </div>
         <p id="empty" class="empty-state" hidden>No files uploaded yet.</p>
         <section id="folder-section" class="library-section" hidden>
           <h3>Folders</h3>
