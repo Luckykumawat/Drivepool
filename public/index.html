@@ -8,12 +8,13 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png?v=4">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="/style.css?v=26">
-  <script src="/app.js?v=25" type="module"></script>
+  <link rel="stylesheet" href="/style.css?v=27">
+  <script src="/app.js?v=27" type="module"></script>
 </head>
 <body>
   <header class="shell top">
-    <a class="brand" href="/"><img src="/icon-192.png?v=4" alt=""> Drivepool</a>
+    <div class="brand-area"><button id="mobile-menu" type="button" aria-label="Open menu" aria-haspopup="dialog" aria-controls="mobile-navigation" hidden>☰</button>
+    <a class="brand" href="/"><img src="/icon-192.png?v=4" alt=""> Drivepool</a></div>
     <div id="header-search" hidden>
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg>
       <input type="search" id="search" aria-label="Search files and folders" placeholder="Search files and folders">
@@ -45,7 +46,7 @@
     </div>
     <p id="message" class="notice" role="status" hidden></p>
       <section id="library" hidden>
-        <aside class="workspace-sidebar" aria-label="Workspace navigation">
+        <aside class="workspace-sidebar" id="workspace-sidebar" aria-label="Workspace navigation">
         <details id="upload-actions" class="item-actions new-upload">
           <summary class="primary">+ New</summary>
           <div class="action-panel">
@@ -57,9 +58,26 @@
         </details>
         <div class="library-tabs" role="group" aria-label="File location">
           <button id="show-library" aria-pressed="true"><span aria-hidden="true">▤</span> My files</button>
-          <button id="show-bin" aria-pressed="false"><span aria-hidden="true">▱</span> Bin</button>
+          <button id="show-bin" aria-pressed="false"><span aria-hidden="true">▱</span> Trash</button>
         </div>
-          <button id="open-storage" type="button" aria-haspopup="dialog" aria-controls="storage-drawer"><span aria-hidden="true">☁</span> Storage</button>
+          <button id="open-storage" type="button" aria-expanded="true" aria-controls="sidebar-storage"><span aria-hidden="true">☁</span> Storage</button>
+          <section id="sidebar-storage" aria-label="Storage details">
+            <progress id="storage-meter" max="100" value="0" aria-label="Storage used"></progress>
+            <p id="storage-capacity">Loading storage…</p>
+            <p id="storage-free"></p>
+    <div id="dashboard">
+      <section class="metrics" aria-label="Storage summary">
+        <div class="card"><span id="free-label">Total free space</span><strong id="free">—</strong></div>
+        <div class="card"><span>Largest single upload</span><strong id="largest">—</strong><small>Based on available Drive space. Large files can span Drives.</small></div>
+        <div class="card"><span>Connected drives</span><strong id="count">—</strong></div>
+      </section>
+      <section class="card panel">
+        <div class="panel-heading"><div><h2>Connected drives</h2></div><button id="refresh">Refresh</button></div>
+        <ul id="accounts"></ul>
+      </section>
+    </div>
+            <div id="sidebar-connect"></div>
+          </section>
         </aside>
         <div class="workspace-main">
         <div class="workspace-heading">
@@ -123,22 +141,9 @@
       <button class="primary" id="confirm-move" type="button">Move</button>
     </form>
   </dialog>
-  <dialog id="storage-drawer" aria-labelledby="storage-title">
-    <div class="panel-heading">
-      <h2 id="storage-title">Storage details</h2>
-      <form method="dialog"><button autofocus>Close</button></form>
-    </div>
-    <div id="dashboard">
-      <section class="metrics" aria-label="Storage summary">
-        <div class="card"><span id="free-label">Total free space</span><strong id="free">—</strong></div>
-        <div class="card"><span>Largest single upload</span><strong id="largest">—</strong><small>Based on available Drive space. Large files can span Drives.</small></div>
-        <div class="card"><span>Connected drives</span><strong id="count">—</strong></div>
-      </section>
-      <section class="card panel">
-        <div class="panel-heading"><div><h2>Connected drives</h2></div><button id="refresh">Refresh</button></div>
-        <ul id="accounts"></ul>
-      </section>
-    </div>
+  <dialog id="mobile-navigation" aria-label="Drivepool menu">
+    <div class="mobile-menu-heading"><strong>Drivepool</strong><form method="dialog"><button aria-label="Close menu">×</button></form></div>
+    <div id="mobile-sidebar-slot"></div>
   </dialog>
   <dialog id="install-guide">
     <h2>Install Drivepool</h2>

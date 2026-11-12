@@ -21,7 +21,13 @@ function applyTheme(theme) {
 
 let savedTheme;
 try { savedTheme = localStorage.getItem('drivepool-theme'); } catch {}
-applyTheme(savedTheme);
+let driveAppearanceApplied = false;
+try { driveAppearanceApplied = localStorage.getItem('drivepool-drive-appearance') === '1'; } catch {}
+applyTheme(driveAppearanceApplied && savedTheme !== 'monochrome' ? savedTheme : 'classic-blue');
+try {
+  localStorage.setItem('drivepool-drive-appearance', '1');
+  localStorage.setItem('drivepool-theme', document.documentElement.dataset.theme);
+} catch {}
 
 themeSelect.addEventListener('change', () => {
   applyTheme(themeSelect.value);
@@ -97,6 +103,15 @@ async function refresh() {
     byId('free').textContent = measured.length ? bytes(measured.reduce((sum, account) => sum + account.free, 0)) : '—';
     byId('largest').textContent = measured.length ? bytes(measured.reduce((sum, account) => sum + account.max, 0)) : '—';
     byId('count').textContent = accounts.length;
+    const quotaAccounts = accounts.filter(account => account.free != null && account.total != null);
+    const total = quotaAccounts.reduce((sum, account) => sum + account.total, 0);
+    const free = quotaAccounts.reduce((sum, account) => sum + account.free, 0);
+    const partial = quotaAccounts.length !== accounts.length ? 'Known ' : '';
+    byId('storage-capacity').textContent = quotaAccounts.length
+      ? partial + bytes(total - free) + ' used of ' + bytes(total) : 'Storage capacity unavailable';
+    byId('storage-free').textContent = quotaAccounts.length ? bytes(free) + ' free' : '';
+    byId('storage-meter').hidden = !quotaAccounts.length;
+    byId('storage-meter').value = total > 0 ? Math.max(0, Math.min(100, (total - free) / total * 100)) : 0;
     byId('accounts').replaceChildren(...accounts.map(account =>
       row(account.email, account.unavailable ? 'Some account data is unavailable. Refresh or reconnect.' : 'Google Drive',
         storageBadge(account.free))
@@ -961,8 +976,31 @@ byId('confirm-move').onclick = async () => {
   }
 };
 
-const storageDrawer = byId('storage-drawer');
-byId('open-storage').onclick = () => storageDrawer.showModal();
+const navigation = byId('mobile-navigation');
+const sidebar = byId('workspace-sidebar');
+const mobileLayout = window.matchMedia('(max-width: 760px)');
+function placeSidebar() {
+  if (navigation.open) navigation.close();
+  if (mobileLayout.matches) byId('mobile-sidebar-slot').append(sidebar);
+  else byId('library').prepend(sidebar);
+}
+placeSidebar();
+mobileLayout.addEventListener('change', placeSidebar);
+byId('mobile-menu').onclick = () => navigation.showModal();
+navigation.addEventListener('click', event => {
+  if (event.target !== navigation) return;
+  const bounds = navigation.getBoundingClientRect();
+  if (event.clientX < bounds.left || event.clientX > bounds.right ||
+      event.clientY < bounds.top || event.clientY > bounds.bottom) navigation.close();
+});
+for (const id of ['show-library', 'show-bin', 'choose', 'choose-folder']) {
+  byId(id).addEventListener('click', () => { if (navigation.open) navigation.close(); });
+}
+byId('open-storage').onclick = () => {
+  const details = byId('sidebar-storage');
+  details.hidden = !details.hidden;
+  byId('open-storage').setAttribute('aria-expanded', String(!details.hidden));
+};
 
 byId('refresh').onclick = () => refresh().catch(error => message(error.message));
 function openUploadPicker(input) {
@@ -1125,7 +1163,10 @@ try {
   byId('logout').hidden = !signedIn;
   byId('header-search').hidden = !signedIn;
   byId('welcome').hidden = signedIn;
-  if (signedIn) byId('dashboard').after(connect);
+  if (signedIn) {
+    byId('sidebar-connect').append(connect);
+    byId('mobile-menu').hidden = false;
+  }
   byId('library').hidden = !signedIn;
   document.body.classList.toggle('signed-in', signedIn);
   if (signedIn) await refresh();

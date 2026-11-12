@@ -102,7 +102,8 @@ async function quota(token) {
   const { storageQuota = {}, maxUploadSize } = await response.json();
   const free = storageQuota.limit != null && storageQuota.usage != null
     ? Math.max(0, Number(storageQuota.limit) - Number(storageQuota.usage)) : null;
-  return { free, max: Math.min(free ?? 0, Number(maxUploadSize ?? Infinity)) };
+  return { free, total: storageQuota.limit == null ? null : Number(storageQuota.limit),
+    max: Math.min(free ?? 0, Number(maxUploadSize ?? Infinity)) };
 }
 
 async function listFiles(token, user) {
@@ -727,7 +728,7 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
           const token = await access(connection);
           const [space, files] = await Promise.allSettled([quota(token), listFiles(token, user)]);
           return {
-            id, email, free: space.value?.free ?? null, max: space.value?.max ?? 0,
+            id, email, free: space.value?.free ?? null, total: space.value?.total ?? null, max: space.value?.max ?? 0,
             files: files.value || [], unavailable: space.status === 'rejected' || files.status === 'rejected'
           };
         } catch {
