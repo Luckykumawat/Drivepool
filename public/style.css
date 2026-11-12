@@ -658,3 +658,17 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
 .legacy-office-preview p { margin: 0 0 8px; font-size: .85rem; }
 .legacy-office-preview iframe { flex: 1; min-height: 250px; }
 .brand img { background: white; object-fit: contain; }
+
+@font-face {
+  font-family: "TAN Kindred";
+  src: local("TAN - KINDRED"), local("TAN KINDRED"), local("TAN Kindred");
+  font-weight: 400;
+  font-display: swap;
+}
+.brand-wordmark {
+  font-family: "TAN Kindred", Georgia, serif;
+  font-size: 1.22rem;
+  font-weight: 400;
+  letter-spacing: -.025em;
+  white-space: nowrap;
+}
