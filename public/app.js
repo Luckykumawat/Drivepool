@@ -15,8 +15,7 @@ function applyTheme(theme) {
   const selected = themeColors.has(theme) ? theme : 'classic-blue';
   document.documentElement.dataset.theme = selected;
   themeSelect.value = selected;
-  document.querySelector('.brand img').src =
-    selected === 'forest-lime' ? '/icon-forest.png' : '/icon-192.png?v=3';
+
   themeColor.content = themeColors.get(selected);
 }
 
@@ -160,6 +159,8 @@ function previewType(file) {
     log: 'text/plain', xml: 'text/plain', html: 'text/plain', css: 'text/plain', js: 'text/plain',
     mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg'
   };
+  if (['docx', 'xlsx', 'xls', 'xlsm', 'ods', 'pptx'].includes(ext)) return 'office';
+  if (['doc', 'ppt'].includes(ext)) return 'legacy-office';
   return formats[ext] || '';
 }
 
@@ -179,9 +180,26 @@ async function openPreview(file) {
     previewContent.textContent = 'Preview is unavailable for this format. Use Download to open it in a compatible application.';
     return;
   }
-  const limit = 50 * 1024 * 1024;
+  if (type === 'legacy-office') {
+    if (file.split) {
+      previewContent.textContent = 'Save this document as DOCX or PPTX for in-app preview of split files.';
+      return;
+    }
+    const wrapper = document.createElement('div');
+    wrapper.className = 'legacy-office-preview';
+    const note = document.createElement('p');
+    note.textContent = 'Google Drive preview. Your browser may need to be signed in to ' + file.account.email + '.';
+    const frame = document.createElement('iframe');
+    frame.title = file.name;
+    frame.src = 'https://drive.google.com/file/d/' + encodeURIComponent(file.id) + '/preview?authuser=' +
+      encodeURIComponent(file.account.email);
+    wrapper.append(note, frame);
+    previewContent.replaceChildren(wrapper);
+    return;
+  }
+  const limit = (type === 'office' ? 20 : 50) * 1024 * 1024;
   if (Number(file.size) > limit) {
-    previewContent.textContent = 'Preview supports files up to 50 MB. Use Download for this file.';
+    previewContent.textContent = 'Preview supports files up to ' + (limit / 1024 / 1024) + ' MB. Use Download for this file.';
     return;
   }
   try {
@@ -196,12 +214,29 @@ async function openPreview(file) {
       size += value.byteLength;
       if (size > limit) {
         await reader.cancel();
-        throw new Error('Preview supports files up to 50 MB. Use Download for this file.');
+        throw new Error('Preview supports files up to ' + (limit / 1024 / 1024) + ' MB. Use Download for this file.');
       }
       chunks.push(value);
     }
     if (controller.signal.aborted) return;
     const blob = new Blob(chunks, { type });
+    if (type === 'office') {
+      const buffer = await blob.arrayBuffer();
+      if (controller.signal.aborted) return;
+      const frame = document.createElement('iframe');
+      frame.title = file.name + ' — Office preview';
+      frame.setAttribute('sandbox', 'allow-scripts');
+      frame.src = '/office-viewer.html?v=1';
+      frame.addEventListener('load', () => {
+        if (!controller.signal.aborted) {
+          frame.contentWindow.postMessage({
+            type: 'drivepool-office', format: file.name.split('.').at(-1).toLowerCase(), buffer
+          }, '*', [buffer]);
+        }
+      }, { once: true });
+      previewContent.replaceChildren(frame);
+      return;
+    }
     if (type === 'text/plain') {
       const text = document.createElement('pre');
       text.textContent = (await blob.text()).slice(0, 1000000);

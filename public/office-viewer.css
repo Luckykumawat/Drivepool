@@ -1,0 +1,14 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #eef1f7; color: #202745; font: 14px system-ui, sans-serif; }
+#office-status, .preview-note { padding: 8px 16px; margin: 0; color: #526077; font-size: 12px; }
+#office-content { padding: 8px; overflow: auto; }
+.docx-wrapper { padding: 12px !important; }
+.docx-wrapper section.docx { max-width: 100%; }
+.sheet-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.sheet-tabs button { padding: 8px 14px; border: 1px solid #d5daea; border-radius: 6px; background: white; cursor: pointer; font: inherit; }
+.sheet-tabs button[aria-pressed=true] { background: #d3e3fd; }
+.sheet-table { max-height: calc(100dvh - 115px); overflow: auto; background: white; }
+table { border-collapse: collapse; font-size: 13px; width: max-content; min-width: 100%; }
+td, th { padding: 6px 10px; border: 1px solid #dde2ec; white-space: pre-wrap; max-width: 400px; overflow-wrap: anywhere; }
+thead th { position: sticky; top: 0; background: #e9eef6; }
+tbody th { background: #f3f5fa; }

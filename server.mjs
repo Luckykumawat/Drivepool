@@ -606,6 +606,10 @@ function copyName(name) {
 
 const assets = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
+  ['/office-viewer.html', ['office-viewer.html', 'text/html; charset=utf-8']],
+  ['/office-viewer.js', ['office-viewer.js', 'text/javascript']],
+  ['/office-viewer.css', ['office-viewer.css', 'text/css']],
+  ['/favicon.png', ['favicon.png', 'image/png']],
   ['/app.js', ['app.js', 'text/javascript']],
   ['/style.css', ['style.css', 'text/css']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']],
@@ -619,11 +623,17 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Referrer-Policy', 'same-origin');
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' blob:; media-src 'self' blob:; frame-src blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' blob:; media-src 'self' blob:; frame-src 'self' blob: https://drive.google.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
   try {
     const url = new URL(req.url, origin);
     const path = url.pathname;
     if (req.method === 'GET' && assets.has(path)) {
+      if (path.startsWith('/office-viewer.')) {
+        res.setHeader('Content-Security-Policy',
+          "default-src 'none'; script-src " + origin + "; style-src " + origin +
+          " 'unsafe-inline'; img-src data: blob:; font-src data: blob:; connect-src 'none'; " +
+          "frame-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; sandbox allow-scripts");
+      }
       const [content, type] = assets.get(path);
       return res.writeHead(200, { 'Content-Type': type }).end(content);
     }

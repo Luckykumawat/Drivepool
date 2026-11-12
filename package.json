@@ -6,11 +6,25 @@
     "node": ">=24"
   },
   "scripts": {
-    "start": "node --env-file-if-exists=.env server.mjs"
+    "start": "node --env-file-if-exists=.env server.mjs",
+    "build:office": "node scripts/build-office.mjs"
   },
   "dependencies": {
+    "docx-preview": "0.4.1",
+    "jszip": "3.10.2",
     "pg": "8.23.1",
+    "pptx-preview": "1.0.7",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zip-stream": "7.0.5"
   },
-  "description": "A web app that combines available Google Drive storage into one workspace."
+  "description": "A web app that combines available Google Drive storage into one workspace.",
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "overrides": {
+    "pptx-preview": {
+      "echarts": "6.1.0",
+      "uuid": "11.1.1"
+    }
+  }
 }
