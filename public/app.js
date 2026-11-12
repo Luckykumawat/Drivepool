@@ -971,7 +971,18 @@ function renderFiles() {
     item.append(button, uploadDateLabel(dates[0]));
     const owner = document.createElement('small');
     owner.className = 'folder-owner';
-    owner.textContent = emails.join(', ') || '—';
+    if (emails.length) {
+      const initial = document.createElement('span');
+      initial.className = 'owner-initial';
+      initial.setAttribute('aria-hidden', 'true');
+      initial.textContent = emails[0].charAt(0).toUpperCase();
+      const email = document.createElement('span');
+      email.className = 'owner-email';
+      email.textContent = emails.join(', ');
+      owner.append(initial, email);
+    } else {
+      owner.textContent = '—';
+    }
     owner.title = emails.join(', ') || 'No Drive assigned to this empty folder yet';
     item.append(owner, actionsMenu(name, actions));
     setupSelectionCard(item, 'folder:' + path, name, contents,

@@ -1037,3 +1037,8 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
   #files[data-view="grid"] .file-name,
   #files[data-view="list"] .file-name { font-weight: 400; }
 }
+
+@media (min-width: 761px) {
+  #folders[data-view="list"] .folder-owner { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  #folders[data-view="list"] .folder-owner .owner-initial { flex-basis: 19px; height: 19px; font-size: .7rem; }
+}
