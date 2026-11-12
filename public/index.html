@@ -8,8 +8,8 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png?v=4">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="/style.css?v=27">
-  <script src="/app.js?v=27" type="module"></script>
+  <link rel="stylesheet" href="/style.css?v=28">
+  <script src="/app.js?v=28" type="module"></script>
 </head>
 <body>
   <header class="shell top">
@@ -19,7 +19,7 @@
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg>
       <input type="search" id="search" aria-label="Search files and folders" placeholder="Search files and folders">
     </div>
-    <div class="actions">
+    <div class="actions" id="app-settings">
       <label class="theme-control">Theme
         <select id="theme-select">
           <option value="studio">Studio</option>
@@ -29,6 +29,13 @@
           <option value="monochrome">Black &amp; White</option>
           <option value="classic-blue">Classic Blue</option>
           <option value="forest-lime">Forest Lime</option>
+        </select>
+      </label>
+      <label class="theme-control">Appearance
+        <select id="appearance-select">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
         </select>
       </label>
       <button id="install" type="button">Install app</button>
@@ -61,6 +68,7 @@
           <button id="show-bin" aria-pressed="false"><span aria-hidden="true">▱</span> Trash</button>
         </div>
           <button id="open-storage" type="button" aria-expanded="true" aria-controls="sidebar-storage"><span aria-hidden="true">☁</span> Storage</button>
+          <div id="sidebar-settings"></div>
           <section id="sidebar-storage" aria-label="Storage details">
             <progress id="storage-meter" max="100" value="0" aria-label="Storage used"></progress>
             <p id="storage-capacity">Loading storage…</p>
@@ -80,9 +88,14 @@
           </section>
         </aside>
         <div class="workspace-main">
+        <div class="mobile-file-tabs"><span>My Drive</span></div>
         <div class="workspace-heading">
           <div><nav id="breadcrumbs" aria-label="Folder path"><h2>Your files</h2></nav><p id="library-description">Drop files here or use + New to upload.</p></div>
 
+          <div class="view-switch" role="group" aria-label="File layout">
+            <button id="list-layout" type="button" aria-label="List view" title="List view"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h1M3 12h1M3 18h1"/></svg></button>
+            <button id="grid-layout" type="button" aria-label="Grid view" title="Grid view"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg></button>
+          </div>
         </div>
         <input type="file" id="file" multiple hidden>
         <input type="file" id="folder" webkitdirectory multiple hidden>
@@ -122,6 +135,19 @@
         </div>
       </section>
   </main>
+  <nav id="mobile-bottom-nav" aria-label="Main navigation" hidden>
+    <button id="bottom-files" type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 2h9v12H3z"/></svg><span>Files</span></button>
+    <button id="bottom-trash" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15"/></svg><span>Trash</span></button>
+    <button id="bottom-storage" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18a5 5 0 0 1-1-10 7 7 0 0 1 13 1 4.5 4.5 0 0 1 0 9Z"/></svg><span>Storage</span></button>
+  </nav>
+  <button id="mobile-new" type="button" aria-label="New file or folder" hidden>+</button>
+  <dialog id="mobile-upload-dialog" aria-labelledby="mobile-upload-title">
+    <h2 id="mobile-upload-title">Create or upload</h2>
+    <button type="button" data-upload-action="new-folder">New folder</button>
+    <button type="button" data-upload-action="choose">Upload files</button>
+    <button type="button" data-upload-action="choose-folder">Upload folder</button>
+    <form method="dialog"><button>Cancel</button></form>
+  </dialog>
   <dialog id="file-preview-dialog" aria-labelledby="preview-title">
     <header class="preview-header">
       <h2 id="preview-title"></h2>

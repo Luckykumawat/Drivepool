@@ -16,8 +16,28 @@ function applyTheme(theme) {
   document.documentElement.dataset.theme = selected;
   themeSelect.value = selected;
 
-  themeColor.content = themeColors.get(selected);
+  updateAppearance();
 }
+
+const appearanceSelect = byId('appearance-select');
+const systemAppearance = window.matchMedia('(prefers-color-scheme: dark)');
+let appearance = 'system';
+try {
+  const saved = localStorage.getItem('drivepool-appearance');
+  if (['system', 'light', 'dark'].includes(saved)) appearance = saved;
+} catch {}
+appearanceSelect.value = appearance;
+function updateAppearance() {
+  const dark = appearance === 'dark' || (appearance === 'system' && systemAppearance.matches);
+  document.documentElement.dataset.mode = dark ? 'dark' : 'light';
+  themeColor.content = dark ? '#171c20' : themeColors.get(document.documentElement.dataset.theme);
+}
+systemAppearance.addEventListener('change', updateAppearance);
+appearanceSelect.addEventListener('change', () => {
+  appearance = appearanceSelect.value;
+  try { localStorage.setItem('drivepool-appearance', appearance); } catch {}
+  updateAppearance();
+});
 
 let savedTheme;
 try { savedTheme = localStorage.getItem('drivepool-theme'); } catch {}
@@ -128,6 +148,8 @@ async function refresh() {
 let files = [];
 let savedFolders = [];
 let showingBin = false;
+let fileLayout = 'grid';
+try { if (localStorage.getItem('drivepool-view') === 'list') fileLayout = 'list'; } catch {}
 let bulkBusy = false;
 const selectedFiles = new Set();
 let selectionCards = [];
@@ -420,6 +442,10 @@ function showBin(value) {
     ? 'Restore files to their original folder or delete them permanently.'
     : 'Drop files here or use + New to upload.';
   byId('upload-actions').hidden = value;
+  byId('mobile-new').hidden = value;
+  byId('bottom-files').setAttribute('aria-pressed', String(!value));
+  byId('bottom-trash').setAttribute('aria-pressed', String(value));
+  document.querySelector('.mobile-file-tabs span').textContent = value ? 'Trash' : 'My Drive';
   openFolder('');
 }
 
@@ -737,8 +763,10 @@ async function updateFolder(path, action) {
 function renderFiles() {
   const query = byId('search').value.trim().toLowerCase();
   const list = byId('files');
-  list.dataset.view = 'grid';
-  byId('folders').dataset.view = 'grid';
+  list.dataset.view = fileLayout;
+  byId('folders').dataset.view = fileLayout;
+  byId('list-layout').setAttribute('aria-pressed', String(fileLayout === 'list'));
+  byId('grid-layout').setAttribute('aria-pressed', String(fileLayout === 'grid'));
 
   const breadcrumbs = byId('breadcrumbs');
   breadcrumbs.replaceChildren();
@@ -806,6 +834,10 @@ function renderFiles() {
     button.title = path;
     const item = document.createElement('li');
     item.className = 'folder-item';
+    const cover = document.createElement('div');
+    cover.className = 'folder-cover';
+    cover.append(typeIcon('folder'));
+    item.append(cover);
     const actions = [['Open', () => openFolder(path)]];
     if (showingBin) {
       actions.push(['Restore folder contents', () => changeFolder(path, 'restore')],
@@ -871,14 +903,22 @@ function renderFiles() {
     item.addEventListener('keydown', event => {
       if (event.target === item && event.key === 'Enter') void openPreview(file);
     });
+    const cover = document.createElement('div');
+    cover.className = 'file-preview file-cover';
+    cover.setAttribute('aria-hidden', 'true');
+    const format = document.createElement('span');
+    format.textContent = file.name.includes('.') ? file.name.split('.').at(-1).toUpperCase().slice(0, 5) : 'FILE';
+    cover.append(format);
     if (!showingBin && file.hasThumbnail) {
       const preview = document.createElement('img');
       preview.className = 'file-preview';
       preview.alt = '';
       preview.loading = 'lazy';
-      preview.onerror = () => preview.remove();
+      preview.onerror = () => preview.replaceWith(cover);
       preview.src = '/api/thumbnail/' + id;
       item.prepend(preview);
+    } else {
+      item.prepend(cover);
     }
     return item;
   });
@@ -976,17 +1016,48 @@ byId('confirm-move').onclick = async () => {
   }
 };
 
+for (const layout of ['list', 'grid']) {
+  byId(layout + '-layout').onclick = () => {
+    fileLayout = layout;
+    try { localStorage.setItem('drivepool-view', layout); } catch {}
+    renderFiles();
+  };
+}
+const uploadDialog = byId('mobile-upload-dialog');
+byId('mobile-new').onclick = () => {
+  if (!upload.disabled && !showingBin) uploadDialog.showModal();
+};
+for (const button of uploadDialog.querySelectorAll('[data-upload-action]')) {
+  button.onclick = () => {
+    uploadDialog.close();
+    byId(button.dataset.uploadAction).click();
+  };
+}
+byId('bottom-files').onclick = () => byId('show-library').click();
+byId('bottom-trash').onclick = () => byId('show-bin').click();
+
 const navigation = byId('mobile-navigation');
 const sidebar = byId('workspace-sidebar');
 const mobileLayout = window.matchMedia('(max-width: 760px)');
 function placeSidebar() {
   if (navigation.open) navigation.close();
-  if (mobileLayout.matches) byId('mobile-sidebar-slot').append(sidebar);
-  else byId('library').prepend(sidebar);
+  if (mobileLayout.matches) {
+    byId('mobile-sidebar-slot').append(sidebar);
+    byId('sidebar-settings').append(byId('app-settings'));
+  } else {
+    byId('library').prepend(sidebar);
+    document.querySelector('.top').append(byId('app-settings'));
+  }
 }
 placeSidebar();
 mobileLayout.addEventListener('change', placeSidebar);
 byId('mobile-menu').onclick = () => navigation.showModal();
+byId('bottom-storage').onclick = () => {
+  byId('sidebar-storage').hidden = false;
+  byId('open-storage').setAttribute('aria-expanded', 'true');
+  navigation.showModal();
+  byId('open-storage').focus();
+};
 navigation.addEventListener('click', event => {
   if (event.target !== navigation) return;
   const bounds = navigation.getBoundingClientRect();
@@ -1166,6 +1237,8 @@ try {
   if (signedIn) {
     byId('sidebar-connect').append(connect);
     byId('mobile-menu').hidden = false;
+    byId('mobile-bottom-nav').hidden = false;
+    byId('mobile-new').hidden = false;
   }
   byId('library').hidden = !signedIn;
   document.body.classList.toggle('signed-in', signedIn);
