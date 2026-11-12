@@ -808,6 +808,7 @@ function renderFiles() {
   const query = byId('search').value.trim().toLowerCase();
   const list = byId('files');
   list.dataset.view = fileLayout;
+  byId('file-section').dataset.view = fileLayout;
   byId('folders').dataset.view = fileLayout;
   byId('list-layout').setAttribute('aria-pressed', String(fileLayout === 'list'));
   byId('grid-layout').setAttribute('aria-pressed', String(fileLayout === 'grid'));
@@ -925,6 +926,7 @@ function renderFiles() {
     item.className = 'file-item';
     const nameLabel = item.querySelector('strong');
     nameLabel.className = 'file-name';
+    nameLabel.parentElement.classList.add('file-label');
     nameLabel.title = file.name;
     const footer = item.querySelector('small');
     footer.className = 'file-owner';
@@ -939,6 +941,21 @@ function renderFiles() {
     email.textContent = account;
     footer.append(initial, email);
     item.append(footer);
+    const uploaded = document.createElement('time');
+    uploaded.className = 'file-uploaded-date';
+    const created = file.createdTime ? new Date(file.createdTime) : null;
+    if (created && !Number.isNaN(created.getTime())) {
+      uploaded.dateTime = created.toISOString();
+      uploaded.textContent = new Intl.DateTimeFormat(undefined, {
+        day: 'numeric', month: 'short', year: 'numeric'
+      }).format(created);
+      uploaded.title = 'Uploaded ' + created.toLocaleString();
+      uploaded.setAttribute('aria-label', uploaded.title);
+    } else {
+      uploaded.textContent = '—';
+      uploaded.setAttribute('aria-label', 'Upload date unavailable');
+    }
+    item.append(uploaded);
     if (kind === 'Image') nameLabel.prepend(typeIcon('image'));
     setupSelectionCard(item, fileKey(file), file.name, [file], action => changeFile(file, action), () => openPreview(file));
     item.ondblclick = event => {

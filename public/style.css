@@ -873,3 +873,35 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
     touch-action: pan-y;
   }
 }
+
+
+.file-list-columns, .file-uploaded-date { display: none; }
+@media (min-width: 761px) {
+  #file-section[data-view="list"] .file-list-columns,
+  #files[data-view="list"] .file-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(110px, .65fr) minmax(130px, 1fr) 32px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+  }
+  #file-section[data-view="list"] .file-list-columns {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: .8rem;
+    border-bottom: 1px solid var(--outline);
+  }
+  #files[data-view="list"] { margin-top: 0; }
+  #files[data-view="list"] .file-item { min-height: 52px; }
+  #files[data-view="list"] .file-label { grid-column: 1; grid-row: 1; min-width: 0; }
+  #files[data-view="list"] .file-uploaded-date {
+    display: block;
+    grid-column: 2;
+    grid-row: 1;
+    color: var(--muted);
+    font-size: .8rem;
+    white-space: nowrap;
+  }
+  #files[data-view="list"] .file-owner { grid-column: 3; grid-row: 1; min-width: 0; }
+  #files[data-view="list"] .item-actions { grid-column: 4; grid-row: 1; }
+}
