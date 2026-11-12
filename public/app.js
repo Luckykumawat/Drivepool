@@ -54,21 +54,24 @@ appearanceToggle.addEventListener('click', async () => {
   const bounds = appearanceToggle.getBoundingClientRect();
   const x = bounds.left + bounds.width / 2;
   const y = bounds.top + bounds.height / 2;
-  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)) + 2;
   appearanceChanging = true;
   document.documentElement.classList.add('appearance-changing');
+  document.documentElement.classList.toggle('appearance-reverse', next === 'light');
   let transition;
   try {
     transition = document.startViewTransition(apply);
     await transition.ready;
+    const smallCircle = 'circle(0px at ' + x + 'px ' + y + 'px)';
+    const fullCircle = 'circle(' + radius + 'px at ' + x + 'px ' + y + 'px)';
+    const revealingDark = next === 'dark';
     const animation = document.documentElement.animate({
-      clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)',
-        'circle(' + radius + 'px at ' + x + 'px ' + y + 'px)']
+      clipPath: revealingDark ? [smallCircle, fullCircle] : [fullCircle, smallCircle]
     }, {
-      duration: 650,
-      easing: 'cubic-bezier(.22, .61, .36, 1)',
+      duration: 800,
+      easing: 'cubic-bezier(.4, 0, .2, 1)',
       fill: 'both',
-      pseudoElement: '::view-transition-new(root)'
+      pseudoElement: revealingDark ? '::view-transition-new(root)' : '::view-transition-old(root)'
     });
     await animation.finished;
     await transition.finished;
@@ -76,7 +79,7 @@ appearanceToggle.addEventListener('click', async () => {
     transition?.skipTransition();
     apply();
   } finally {
-    document.documentElement.classList.remove('appearance-changing');
+    document.documentElement.classList.remove('appearance-changing', 'appearance-reverse');
     appearanceChanging = false;
   }
 });
@@ -1349,4 +1352,6 @@ try {
   if (signedIn) await refresh();
 } catch (error) {
   message(error.message);
+} finally {
+  byId('app-loading').hidden = true;
 }

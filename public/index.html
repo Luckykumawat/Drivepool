@@ -9,8 +9,8 @@
   <link rel="apple-touch-icon" href="/icon-192.png?v=4">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="preload" href="/fonts/google-sans-v1.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/style.css?v=32">
-  <script src="/app.js?v=32" type="module"></script>
+  <link rel="stylesheet" href="/style.css?v=33">
+  <script src="/app.js?v=33" type="module"></script>
 </head>
 <body>
   <header class="shell top">
@@ -42,7 +42,10 @@
     </div>
   </header>
   <main class="shell">
-    <div class="overview" id="welcome">
+    <div id="app-loading" class="app-loading" role="status">
+      <span class="loading-indicator" aria-hidden="true"></span> Opening your workspace…
+    </div>
+    <div class="overview" id="welcome" hidden>
     <section class="hero">
       <span class="eyebrow">PERSONAL CLOUD WORKSPACE</span>
       <h1>Your drives, together.</h1>

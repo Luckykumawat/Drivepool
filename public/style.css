@@ -960,3 +960,29 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
 }
 .appearance-changing::view-transition-old(root) { z-index: 1; }
 .appearance-changing::view-transition-new(root) { z-index: 2; }
+
+
+.appearance-changing .appearance-thumb { transition: none; }
+.appearance-changing::view-transition-old(root),
+.appearance-changing::view-transition-new(root) { will-change: clip-path; }
+.appearance-changing.appearance-reverse::view-transition-old(root) { z-index: 2; }
+.appearance-changing.appearance-reverse::view-transition-new(root) { z-index: 1; }
+.app-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  color: var(--muted);
+}
+.loading-indicator {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: workspace-loading .9s linear infinite;
+}
+@keyframes workspace-loading { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .loading-indicator { animation: none; }
+}
