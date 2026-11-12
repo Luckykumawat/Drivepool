@@ -612,6 +612,7 @@ const assets = new Map([
   ['/office-viewer.css', ['office-viewer.css', 'text/css']],
   ['/brand-logo.png', ['brand-logo.png', 'image/png']],
   ['/favicon.png', ['favicon.png', 'image/png']],
+  ['/fonts/google-sans-v1.woff2', ['fonts/google-sans-v1.woff2', 'font/woff2']],
   ['/app.js', ['app.js', 'text/javascript']],
   ['/style.css', ['style.css', 'text/css']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']],
@@ -636,6 +637,7 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
           " 'unsafe-inline'; img-src data: blob:; font-src data: blob:; connect-src 'none'; " +
           "frame-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; sandbox allow-scripts");
       }
+      if (path === '/fonts/google-sans-v1.woff2') res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       const [content, type] = assets.get(path);
       return res.writeHead(200, { 'Content-Type': type }).end(content);
     }

@@ -1,3 +1,10 @@
+@font-face {
+  font-family: "Google Sans";
+  src: url("/fonts/google-sans-v1.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+}
 :root {
   --selection: #f4c56c;
   --selection-ink: #322108;
@@ -21,7 +28,8 @@
   --danger-line: #f4c7c3;
   --danger-hover: #fce8e6;
   color-scheme: light;
-  font-family: system-ui, sans-serif;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+  font-optical-sizing: auto;
   color: var(--ink);
   background: var(--page);
 }
@@ -852,3 +860,16 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
 .file-cover { display: grid; place-items: center; color: var(--label); }
 .file-cover span { padding: 18px 12px; background: var(--tile); border-radius: 12px; font-size: 1.1rem; font-weight: 750; letter-spacing: .04em; }
 :root[data-mode="dark"] .file-cover { background: var(--surface); }
+
+@media (max-width: 760px) {
+  #files[data-view="grid"] .file-name,
+  #files[data-view="list"] .file-name { font-size: 1rem; font-weight: 500; line-height: 1.3; }
+  #files .file-owner { font-size: .7rem; line-height: 1.2; }
+  #files .owner-initial { display: none; }
+  #files .file-item, #folders .folder-item {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: pan-y;
+  }
+}

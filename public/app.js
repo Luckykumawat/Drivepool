@@ -569,15 +569,15 @@ function folderDropTarget(element, destination) {
   });
 }
 
-function setupSelectionCard(card, rowKey, name, items, act) {
+function setupSelectionCard(card, rowKey, name, items, act, activate) {
   const keys = items.map(fileKey);
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
   card.setAttribute('aria-label', name);
   selectionCards.push({ card, keys, rowKey, act });
-  card.draggable = !showingBin;
+  card.draggable = !showingBin && !mobileLayout.matches;
   card.addEventListener('dragstart', event => {
-    if (bulkBusy || showingBin || event.target.closest('.item-actions')) {
+    if (bulkBusy || showingBin || mobileLayout.matches || event.target.closest('.item-actions')) {
       event.preventDefault();
       return;
     }
@@ -601,7 +601,7 @@ function setupSelectionCard(card, rowKey, name, items, act) {
     if (bulkBusy) return;
     const clicked = selectionCards.findIndex(row => row.rowKey === rowKey);
     const anchor = selectionCards.findIndex(row => row.rowKey === selectionAnchor);
-    const toggle = event.ctrlKey || event.metaKey;
+    const toggle = mobileLayout.matches || event.ctrlKey || event.metaKey;
     const wasSelected = keys.every(key => selectedFiles.has(key));
     if (!toggle) selectedFiles.clear();
     const range = event.shiftKey && anchor >= 0
@@ -616,8 +616,52 @@ function setupSelectionCard(card, rowKey, name, items, act) {
     if (!event.shiftKey || anchor < 0) selectionAnchor = rowKey;
     syncSelection();
   };
+  let pressTimer;
+  let touchStart;
+  let suppressClick = false;
+  const stopPress = () => {
+    clearTimeout(pressTimer);
+    pressTimer = undefined;
+  };
+  card.addEventListener('pointerdown', event => {
+    if (!mobileLayout.matches || bulkBusy || event.target.closest('.item-actions') || event.button !== 0) return;
+    stopPress();
+    suppressClick = false;
+    touchStart = { x: event.clientX, y: event.clientY };
+    pressTimer = setTimeout(() => {
+      if (!card.isConnected || bulkBusy) return;
+      suppressClick = true;
+      if (!keys.every(key => selectedFiles.has(key))) select(event);
+      touchStart = undefined;
+    }, 500);
+  });
+  card.addEventListener('pointermove', event => {
+    if (touchStart && Math.hypot(event.clientX - touchStart.x, event.clientY - touchStart.y) > 10) {
+      stopPress();
+      touchStart = undefined;
+    }
+  });
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+    card.addEventListener(type, () => {
+      stopPress();
+      touchStart = undefined;
+    });
+  }
+  card.addEventListener('contextmenu', event => {
+    if (mobileLayout.matches && !event.target.closest('.item-actions')) event.preventDefault();
+  });
   card.addEventListener('click', event => {
-    if (!event.target.closest('.item-actions')) select(event);
+    if (event.target.closest('.item-actions') || bulkBusy) return;
+    if (suppressClick) {
+      suppressClick = false;
+      event.preventDefault();
+      return;
+    }
+    if (mobileLayout.matches && !selectedFiles.size && !showingBin) {
+      activate();
+    } else {
+      select(event);
+    }
   });
   card.addEventListener('keydown', event => {
     if (event.target !== card || !['Enter', ' '].includes(event.key)) return;
@@ -853,10 +897,10 @@ function renderFiles() {
     }
     item.append(button, actionsMenu(name, actions));
     setupSelectionCard(item, 'folder:' + path, name, available.filter(file =>
-      file.folder === path || file.folder?.startsWith(path + '/')), action => updateFolder(path, action));
+      file.folder === path || file.folder?.startsWith(path + '/')), action => updateFolder(path, action), () => openFolder(path));
     folderDropTarget(item, path);
     item.ondblclick = event => {
-      if (!event.target.closest('.item-actions')) openFolder(path);
+      if (!mobileLayout.matches && !event.target.closest('.item-actions')) openFolder(path);
     };
     return item;
   });
@@ -896,9 +940,9 @@ function renderFiles() {
     footer.append(initial, email);
     item.append(footer);
     if (kind === 'Image') nameLabel.prepend(typeIcon('image'));
-    setupSelectionCard(item, fileKey(file), file.name, [file], action => changeFile(file, action));
+    setupSelectionCard(item, fileKey(file), file.name, [file], action => changeFile(file, action), () => openPreview(file));
     item.ondblclick = event => {
-      if (!event.target.closest('.item-actions')) void openPreview(file);
+      if (!mobileLayout.matches && !event.target.closest('.item-actions')) void openPreview(file);
     };
     item.addEventListener('keydown', event => {
       if (event.target === item && event.key === 'Enter') void openPreview(file);
@@ -1040,6 +1084,7 @@ const navigation = byId('mobile-navigation');
 const sidebar = byId('workspace-sidebar');
 const mobileLayout = window.matchMedia('(max-width: 760px)');
 function placeSidebar() {
+  for (const { card } of selectionCards) card.draggable = !showingBin && !mobileLayout.matches;
   if (navigation.open) navigation.close();
   if (mobileLayout.matches) {
     byId('mobile-sidebar-slot').append(sidebar);
