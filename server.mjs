@@ -427,6 +427,13 @@ async function downloadArchive(req, res, user, connections) {
   }
 }
 
+function validFolderPath(path, allowRoot = false) {
+  if (typeof path !== 'string' || path.length > 1000) return false;
+  if (!path) return allowRoot;
+  if (/[\\\x00-\x1f\x7f]/.test(path)) return false;
+  return path.split('/').every(part => part && part !== '.' && part !== '..');
+}
+
 async function fileAction(req, res, user, connections, connectionId, id) {
   const body = await requestText(req, 8192);
   let fields;
@@ -437,7 +444,7 @@ async function fileAction(req, res, user, connections, connectionId, id) {
   }
   const action = fields?.action;
   const name = typeof fields?.name === 'string' ? fields.name.trim() : '';
-  if (!['rename', 'copy', 'trash', 'share', 'restore', 'delete'].includes(action)) fail(400, 'Invalid file action.');
+  if (!['rename', 'copy', 'trash', 'share', 'restore', 'delete', 'move'].includes(action)) fail(400, 'Invalid file action.');
   if (action === 'rename' && (!name || name.length > 255 || /[\x00-\x1f\x7f]/.test(name))) {
     fail(400, 'Enter a valid file name.');
   }
@@ -446,9 +453,8 @@ async function fileAction(req, res, user, connections, connectionId, id) {
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress))) fail(400, 'Enter a valid recipient email.');
 
   const destination = fields.folder;
-  if (destination !== undefined && (!['rename', 'copy'].includes(action) || typeof destination !== 'string' ||
-      !destination || destination.length > 1000 || /[\\\x00-\x1f\x7f]/.test(destination) ||
-      destination.split('/').some(segment => !segment || segment === '.' || segment === '..'))) {
+  if ((action === 'move' || destination !== undefined) &&
+      (!['rename', 'copy', 'move'].includes(action) || !validFolderPath(destination, action === 'move'))) {
     fail(400, 'Invalid folder path.');
   }
   const fromBin = action === 'restore' || action === 'delete';
@@ -469,9 +475,9 @@ async function fileAction(req, res, user, connections, connectionId, id) {
           JSON.stringify({ ...file, viewers }), id, user);
         return json(res, 200, { url: origin + '/api/split-download/' + id });
       }
-      if (action === 'rename') {
+      if (action === 'rename' || action === 'move') {
         await query('UPDATE @split_files SET manifest=? WHERE id=? AND user_id=?',
-          JSON.stringify({ ...file, name, ...(destination && { folder: destination }) }), id, user);
+          JSON.stringify({ ...file, name: action === 'move' ? file.name : name, ...(destination !== undefined && { folder: destination }) }), id, user);
         return json(res, 200, { ok: true });
       }
 
@@ -563,6 +569,9 @@ async function fileAction(req, res, user, connections, connectionId, id) {
     if (action === 'delete') await deleteDriveFile(target, token);
     if (action === 'rename') await driveMutation(target, token, 'PATCH', {
       name, ...(destination && { description: 'Drivepool folder: ' + destination })
+    });
+    if (action === 'move') await driveMutation(target, token, 'PATCH', {
+      description: destination ? 'Drivepool folder: ' + destination : ''
     });
     if (action === 'trash') await driveMutation(target, token, 'PATCH', { trashed: true });
     if (action === 'copy') {
@@ -681,6 +690,13 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
       return redirect(res, '/');
     }
     const connections = await query('SELECT * FROM @drives WHERE user_id=? ORDER BY rowid', user);
+    if (path === '/api/folders' && req.method === 'POST') {
+      let folder;
+      try { folder = JSON.parse(await requestText(req, 8192))?.path; } catch { fail(400, 'Invalid folder path.'); }
+      if (!validFolderPath(folder)) fail(400, 'Invalid folder path.');
+      await query('INSERT INTO @folders (user_id,path) VALUES (?,?) ON CONFLICT (user_id,path) DO NOTHING', user, folder);
+      return json(res, 201, { path: folder });
+    }
     if (path === '/api/dashboard' && req.method === 'GET') {
       const accounts = await Promise.all(connections.map(async connection => {
         const { id, email } = connection;
@@ -701,7 +717,8 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
         return { ...file, id, split: true, partCount: parts.length, driveEmails: parts.map(part =>
           connections.find(connection => connection.id === part.connectionId)?.email).filter(Boolean) };
       });
-      return json(res, 200, { accounts, splitFiles });
+      const folders = (await query('SELECT path FROM @folders WHERE user_id=?', user)).map(row => row.path);
+      return json(res, 200, { accounts, splitFiles, folders });
     }
     if (path === '/api/download-zip' && req.method === 'POST') {
       return await downloadArchive(req, res, user, connections);

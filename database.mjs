@@ -48,6 +48,7 @@ export async function openDatabase(url) {
   const sqlite = new DatabaseSync(resolve(data, 'drivepool.sqlite'));
   sqlite.exec(`
     PRAGMA journal_mode=WAL;
+    CREATE TABLE IF NOT EXISTS folders (user_id TEXT NOT NULL, path TEXT NOT NULL, PRIMARY KEY (user_id, path));
     CREATE TABLE IF NOT EXISTS split_files (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, manifest TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS split_files_user_idx ON split_files (user_id);
     CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT, expiry INTEGER NOT NULL);

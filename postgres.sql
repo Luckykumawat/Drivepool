@@ -43,4 +43,11 @@ CREATE TABLE IF NOT EXISTS drivepool.split_files (
 CREATE INDEX IF NOT EXISTS split_files_user_idx ON drivepool.split_files (user_id);
 ALTER TABLE drivepool.split_files ENABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS drivepool.folders (
+  user_id text NOT NULL,
+  path text NOT NULL,
+  PRIMARY KEY (user_id, path)
+);
+ALTER TABLE drivepool.folders ENABLE ROW LEVEL SECURITY;
+
 COMMIT;

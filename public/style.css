@@ -600,3 +600,17 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
 .workspace-heading #breadcrumbs button:hover { background: var(--hover-tile); color: var(--ink); }
 .breadcrumb-separator { color: var(--muted); font-size: 1.25rem; }
 .workspace-heading #breadcrumbs h2 { overflow-wrap: anywhere; }
+
+.selection-slot { height: 48px; margin-top: 8px; }
+.selection-slot #selection-actions { flex-wrap: nowrap; overflow-x: auto; margin: 0; }
+.selection-slot button { flex-shrink: 0; }
+#move-dialog { background: var(--surface); }
+#move-dialog label { display: block; margin-top: 14px; }
+#move-destination {
+  width: 100%;
+  margin: 6px 0 16px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+}

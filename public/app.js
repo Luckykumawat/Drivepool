@@ -91,7 +91,7 @@ async function refresh() {
   const button = byId('refresh');
   button.disabled = true;
   try {
-    const { accounts, splitFiles = [] } = await read('/api/dashboard');
+    const { accounts, splitFiles = [], folders = [] } = await read('/api/dashboard');
     if (request !== dashboardRequest) return;
     const measured = accounts.filter(account => account.free != null);
     byId('free-label').textContent = measured.length === accounts.length ? 'Total free space' : 'Known free space';
@@ -102,6 +102,7 @@ async function refresh() {
       row(account.email, account.unavailable ? 'Some account data is unavailable. Refresh or reconnect.' : 'Google Drive',
         storageBadge(account.free))
     ));
+    savedFolders = folders;
     files = [...splitFiles, ...accounts.flatMap(account => account.files.map(file => ({ ...file, account })))]
       .sort((a, b) => String(b.createdTime).localeCompare(String(a.createdTime)));
     renderFiles();
@@ -111,6 +112,7 @@ async function refresh() {
 }
 
 let files = [];
+let savedFolders = [];
 let showingBin = false;
 let bulkBusy = false;
 const selectedFiles = new Set();
@@ -305,6 +307,10 @@ function syncSelection() {
   }
   byId('selection-actions').hidden = !selected.length;
   byId('bin-tools').hidden = !showingBin;
+  const includesFolder = selectionCards.some(row =>
+    row.rowKey.startsWith('folder:') && row.keys.some(key => selectedFiles.has(key)));
+  byId('move-selected').hidden = showingBin || includesFolder;
+  byId('move-selected').disabled = bulkBusy || !selected.length;
   byId('download-selected').hidden = showingBin;
   byId('download-selected').disabled = bulkBusy || !selected.length;
   byId('move-selected-to-bin').hidden = showingBin;
@@ -522,20 +528,24 @@ function renderFiles() {
   const folders = new Set();
   const visibleFiles = [];
   const prefix = currentFolder ? currentFolder + '/' : '';
-  for (const file of files) {
-    if (Boolean(file.trashed) !== showingBin) continue;
-    const path = file.folder || '';
+  function includeFolder(path) {
     if (query) {
-      if ((path + '/' + file.name).toLowerCase().includes(query)) visibleFiles.push(file);
       const segments = path.split('/');
       for (const [index, segment] of segments.entries()) {
         if (segment && segment.toLowerCase().includes(query)) folders.add(segments.slice(0, index + 1).join('/'));
       }
-    } else if (path === currentFolder) {
-      visibleFiles.push(file);
-    } else if (path.startsWith(prefix)) {
+    } else if (path !== currentFolder && path.startsWith(prefix)) {
       folders.add(prefix + path.slice(prefix.length).split('/')[0]);
     }
+  }
+  if (!showingBin) savedFolders.forEach(includeFolder);
+  for (const file of files) {
+    if (Boolean(file.trashed) !== showingBin) continue;
+    const path = file.folder || '';
+    if (query ? (path + '/' + file.name).toLowerCase().includes(query) : path === currentFolder) {
+      visibleFiles.push(file);
+    }
+    includeFolder(path);
   }
 
   const available = files.filter(file => Boolean(file.trashed) === showingBin);
@@ -651,6 +661,70 @@ function sendFile(file, folder, completed, total) {
     xhr.send(file);
   });
 }
+
+byId('new-folder').onclick = async () => {
+  byId('upload-actions').open = false;
+  const name = window.prompt('New folder name')?.trim();
+  if (!name) return;
+  if (name === '.' || name === '..' || /[\/\\\x00-\x1f\x7f]/.test(name)) {
+    return message('Enter a folder name without slashes or control characters.');
+  }
+  const path = [currentFolder, name].filter(Boolean).join('/');
+  try {
+    await read('/api/folders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path })
+    });
+    if (!savedFolders.includes(path)) savedFolders.push(path);
+    renderFiles();
+    message('Folder created.');
+  } catch (error) {
+    message(error.message);
+  }
+};
+
+const moveDialog = byId('move-dialog');
+const moveDestination = byId('move-destination');
+byId('move-selected').onclick = () => {
+  const paths = new Set(['']);
+  for (const folder of [...savedFolders, ...files.filter(file => !file.trashed).map(file => file.folder || '')]) {
+    const parts = folder.split('/').filter(Boolean);
+    for (let i = 1; i <= parts.length; i++) paths.add(parts.slice(0, i).join('/'));
+  }
+  moveDestination.replaceChildren(...[...paths].sort().map(path =>
+    new Option(path ? 'Your files › ' + path.split('/').join(' › ') : 'Your files', path)));
+  moveDestination.value = currentFolder;
+  moveDialog.showModal();
+};
+byId('confirm-move').onclick = async () => {
+  const folder = moveDestination.value;
+  const items = files.filter(file => !file.trashed && selectedFiles.has(fileKey(file)) &&
+    (file.folder || '') !== folder);
+  moveDialog.close();
+  if (!items.length) return;
+  bulkBusy = true;
+  syncSelection();
+  let moved = 0;
+  const errors = [];
+  try {
+    for (const file of items) {
+      try {
+        await runFileAction(file, 'move', { folder });
+        file.folder = folder;
+        selectedFiles.delete(fileKey(file));
+        moved++;
+      } catch (error) {
+        errors.push(file.name + ': ' + error.message);
+      }
+    }
+    renderFiles();
+    await refreshAfterChange().catch(error => errors.push(error.message));
+    message(moved + ' of ' + items.length + ' files moved.' + (errors.length ? ' ' + errors.join(' · ') : ''));
+  } finally {
+    bulkBusy = false;
+    syncSelection();
+  }
+};
 
 const storageDrawer = byId('storage-drawer');
 byId('open-storage').onclick = () => storageDrawer.showModal();
