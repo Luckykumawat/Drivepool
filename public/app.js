@@ -59,13 +59,14 @@ appearanceToggle.addEventListener('click', async () => {
   document.documentElement.classList.add('appearance-changing');
   document.documentElement.classList.toggle('appearance-reverse', next === 'light');
   let transition;
+  let revealAnimation;
   try {
     transition = document.startViewTransition(apply);
     await transition.ready;
     const smallCircle = 'circle(0px at ' + x + 'px ' + y + 'px)';
     const fullCircle = 'circle(' + radius + 'px at ' + x + 'px ' + y + 'px)';
     const revealingDark = next === 'dark';
-    const animation = document.documentElement.animate({
+    revealAnimation = document.documentElement.animate({
       clipPath: revealingDark ? [smallCircle, fullCircle] : [fullCircle, smallCircle]
     }, {
       duration: 800,
@@ -73,12 +74,13 @@ appearanceToggle.addEventListener('click', async () => {
       fill: 'both',
       pseudoElement: revealingDark ? '::view-transition-new(root)' : '::view-transition-old(root)'
     });
-    await animation.finished;
+    await revealAnimation.finished;
     await transition.finished;
   } catch {
     transition?.skipTransition();
     apply();
   } finally {
+    revealAnimation?.cancel();
     document.documentElement.classList.remove('appearance-changing', 'appearance-reverse');
     appearanceChanging = false;
   }
@@ -849,11 +851,30 @@ async function updateFolder(path, action) {
   }
 }
 
+function uploadDateLabel(value) {
+  const label = document.createElement('time');
+  label.className = 'file-uploaded-date';
+  const date = value ? new Date(value) : null;
+  if (date && !Number.isNaN(date.getTime())) {
+    label.dateTime = date.toISOString();
+    label.textContent = new Intl.DateTimeFormat(undefined, {
+      day: 'numeric', month: 'short', year: 'numeric'
+    }).format(date);
+    label.title = 'Uploaded ' + date.toLocaleString();
+    label.setAttribute('aria-label', label.title);
+  } else {
+    label.textContent = '—';
+    label.setAttribute('aria-label', 'Upload date unavailable');
+  }
+  return label;
+}
+
 function renderFiles() {
   const query = byId('search').value.trim().toLowerCase();
   const list = byId('files');
   list.dataset.view = fileLayout;
   byId('file-section').dataset.view = fileLayout;
+  byId('folder-section').dataset.view = fileLayout;
   byId('folders').dataset.view = fileLayout;
   byId('list-layout').setAttribute('aria-pressed', String(fileLayout === 'list'));
   byId('grid-layout').setAttribute('aria-pressed', String(fileLayout === 'grid'));
@@ -917,6 +938,12 @@ function renderFiles() {
 
   const folderRows = [...folders].sort().map(path => {
     const name = path.split('/').at(-1);
+    const contents = available.filter(file => file.folder === path || file.folder?.startsWith(path + '/'));
+    const dates = contents.map(file => file.createdTime).filter(value =>
+      value && !Number.isNaN(new Date(value).getTime()));
+    dates.sort((a, b) => new Date(a) - new Date(b));
+    const emails = [...new Set(contents.flatMap(file => file.split ? file.driveEmails || [] : [file.account.email]))];
+
     const button = document.createElement('span');
     button.className = 'folder-name';
     button.textContent = name;
@@ -941,9 +968,14 @@ function renderFiles() {
         ['Move folder contents to bin', () => changeFolder(path, 'trash')]
       );
     }
-    item.append(button, actionsMenu(name, actions));
-    setupSelectionCard(item, 'folder:' + path, name, available.filter(file =>
-      file.folder === path || file.folder?.startsWith(path + '/')), action => updateFolder(path, action), () => openFolder(path));
+    item.append(button, uploadDateLabel(dates[0]));
+    const owner = document.createElement('small');
+    owner.className = 'folder-owner';
+    owner.textContent = emails.join(', ') || '—';
+    owner.title = emails.join(', ') || 'No Drive assigned to this empty folder yet';
+    item.append(owner, actionsMenu(name, actions));
+    setupSelectionCard(item, 'folder:' + path, name, contents,
+      action => updateFolder(path, action), () => openFolder(path));
     folderDropTarget(item, path);
     item.ondblclick = event => {
       if (!mobileLayout.matches && !event.target.closest('.item-actions')) openFolder(path);
@@ -986,21 +1018,7 @@ function renderFiles() {
     email.textContent = account;
     footer.append(initial, email);
     item.append(footer);
-    const uploaded = document.createElement('time');
-    uploaded.className = 'file-uploaded-date';
-    const created = file.createdTime ? new Date(file.createdTime) : null;
-    if (created && !Number.isNaN(created.getTime())) {
-      uploaded.dateTime = created.toISOString();
-      uploaded.textContent = new Intl.DateTimeFormat(undefined, {
-        day: 'numeric', month: 'short', year: 'numeric'
-      }).format(created);
-      uploaded.title = 'Uploaded ' + created.toLocaleString();
-      uploaded.setAttribute('aria-label', uploaded.title);
-    } else {
-      uploaded.textContent = '—';
-      uploaded.setAttribute('aria-label', 'Upload date unavailable');
-    }
-    item.append(uploaded);
+    item.append(uploadDateLabel(file.createdTime));
     if (kind === 'Image') nameLabel.prepend(typeIcon('image'));
     setupSelectionCard(item, fileKey(file), file.name, [file], action => changeFile(file, action), () => openPreview(file));
     item.ondblclick = event => {
