@@ -905,3 +905,48 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
   #files[data-view="list"] .file-owner { grid-column: 3; grid-row: 1; min-width: 0; }
   #files[data-view="list"] .item-actions { grid-column: 4; grid-row: 1; }
 }
+
+
+.appearance-toggle {
+  position: relative;
+  display: inline-flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 76px;
+  height: 38px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--outline);
+  background: var(--tile);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.appearance-toggle svg {
+  position: relative;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.appearance-thumb {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 4px #0002;
+  transition: transform .18s;
+}
+.appearance-toggle[aria-checked="true"] .appearance-thumb { transform: translateX(38px); }
+.appearance-toggle[aria-checked="false"] .appearance-sun,
+.appearance-toggle[aria-checked="true"] .appearance-moon { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .appearance-thumb { transition: none; }
+}

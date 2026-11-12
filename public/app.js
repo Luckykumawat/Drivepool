@@ -19,22 +19,23 @@ function applyTheme(theme) {
   updateAppearance();
 }
 
-const appearanceSelect = byId('appearance-select');
+const appearanceToggle = byId('appearance-toggle');
 const systemAppearance = window.matchMedia('(prefers-color-scheme: dark)');
 let appearance = 'system';
 try {
   const saved = localStorage.getItem('drivepool-appearance');
   if (['system', 'light', 'dark'].includes(saved)) appearance = saved;
 } catch {}
-appearanceSelect.value = appearance;
 function updateAppearance() {
   const dark = appearance === 'dark' || (appearance === 'system' && systemAppearance.matches);
   document.documentElement.dataset.mode = dark ? 'dark' : 'light';
+  appearanceToggle.setAttribute('aria-checked', String(dark));
+  appearanceToggle.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
   themeColor.content = dark ? '#171c20' : themeColors.get(document.documentElement.dataset.theme);
 }
 systemAppearance.addEventListener('change', updateAppearance);
-appearanceSelect.addEventListener('change', () => {
-  appearance = appearanceSelect.value;
+appearanceToggle.addEventListener('click', () => {
+  appearance = document.documentElement.dataset.mode === 'dark' ? 'light' : 'dark';
   try { localStorage.setItem('drivepool-appearance', appearance); } catch {}
   updateAppearance();
 });
