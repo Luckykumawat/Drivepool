@@ -203,28 +203,6 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
 .theme-control select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--outline); border-radius: 10px; padding: 8px; }
 .theme-control select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-:root[data-theme="classic-green"] {
-  --ink: #172c25;
-  --page: #f4f7f1;
-  --tile: #e6f0df;
-  --raised: #f7faf5;
-  --line: #dce5d7;
-  --outline: #aebfad;
-  --hover-line: #91ad85;
-  --hover-tile: #e1eed8;
-  --accent: #37643b;
-  --label: #30583c;
-  --highlight: #eff7e8;
-  --highlight-line: #d5e8cb;
-  --selection: #c5f398;
-  --selection-hover: #b0e781;
-  --selection-ink: #14392d;
-  --hero: #14392d;
-  --hero-ink: #ffffff;
-  --hero-muted: #e4f2ea;
-  --hero-label: #c5f398;
-  --hero-badge: #ffffff14;
-}
 
 :root[data-theme="classic-blue"] {
   --ink: #1f1f1f;
@@ -659,16 +637,43 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
 .legacy-office-preview iframe { flex: 1; min-height: 250px; }
 .brand img { background: white; object-fit: contain; }
 
-@font-face {
-  font-family: "TAN Kindred";
-  src: local("TAN - KINDRED"), local("TAN KINDRED"), local("TAN Kindred");
-  font-weight: 400;
-  font-display: swap;
+
+
+.brand img {
+  width: 200px;
+  max-width: 100%;
+  height: auto;
+  border-radius: 0;
 }
-.brand-wordmark {
-  font-family: "TAN Kindred", Georgia, serif;
-  font-size: 1.22rem;
-  font-weight: 400;
-  letter-spacing: -.025em;
-  white-space: nowrap;
+:root[data-theme="monochrome"] {
+  --ink: #161616;
+  --page: #f7f7f7;
+  --surface: #fff;
+  --raised: #fafafa;
+  --tile: #f0f0f0;
+  --muted: #5b5b5b;
+  --line: #dedede;
+  --outline: #bdbdbd;
+  --hover-line: #777;
+  --hover-tile: #e8e8e8;
+  --accent: #202020;
+  --label: #404040;
+  --highlight: #f4f4f4;
+  --highlight-line: #ddd;
+  --selection: #dedede;
+  --selection-hover: #cecece;
+  --selection-ink: #111;
+  --hero: #191919;
+  --hero-ink: #fff;
+  --hero-muted: #e0e0e0;
+  --hero-label: #fff;
+  --hero-badge: #ffffff14;
+  --danger: #333;
+  --danger-line: #aaa;
+  --danger-hover: #e8e8e8;
+}
+:root[data-theme="monochrome"] .type-icon-image { fill: #444; }
+:root[data-theme="monochrome"] .owner-initial { background: #333; }
+@media (max-width: 640px) {
+  .brand img { width: 160px; }
 }

@@ -609,6 +609,7 @@ const assets = new Map([
   ['/office-viewer.html', ['office-viewer.html', 'text/html; charset=utf-8']],
   ['/office-viewer.js', ['office-viewer.js', 'text/javascript']],
   ['/office-viewer.css', ['office-viewer.css', 'text/css']],
+  ['/brand-logo.png', ['brand-logo.png', 'image/png']],
   ['/favicon.png', ['favicon.png', 'image/png']],
   ['/app.js', ['app.js', 'text/javascript']],
   ['/style.css', ['style.css', 'text/css']],

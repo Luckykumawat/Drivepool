@@ -6,13 +6,13 @@ const themeColors = new Map([
   ['amber', '#f8f4eb'],
   ['ocean', '#f1f7ff'],
   ['lavender', '#f7f3fc'],
-  ['classic-green', '#f4f7f1'],
+  ['monochrome', '#f7f7f7'],
   ['classic-blue', '#f8fafd'],
   ['forest-lime', '#f3f6ef']
 ]);
 
 function applyTheme(theme) {
-  const selected = themeColors.has(theme) ? theme : 'classic-blue';
+  const selected = theme === 'classic-green' ? 'monochrome' : themeColors.has(theme) ? theme : 'classic-blue';
   document.documentElement.dataset.theme = selected;
   themeSelect.value = selected;
 
