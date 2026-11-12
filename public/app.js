@@ -138,6 +138,99 @@ function typeIcon(kind) {
   return svg;
 }
 
+const previewDialog = byId('file-preview-dialog');
+const previewContent = byId('preview-content');
+let previewController;
+let previewUrl;
+
+function releasePreview() {
+  previewController?.abort();
+  previewContent.replaceChildren();
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrl = undefined;
+}
+previewDialog.addEventListener('close', releasePreview);
+
+function previewType(file) {
+  const ext = file.name.split('.').at(-1).toLowerCase();
+  const formats = {
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+    webp: 'image/webp', avif: 'image/avif', bmp: 'image/bmp', pdf: 'application/pdf',
+    txt: 'text/plain', csv: 'text/plain', md: 'text/plain', json: 'text/plain',
+    log: 'text/plain', xml: 'text/plain', html: 'text/plain', css: 'text/plain', js: 'text/plain',
+    mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg'
+  };
+  return formats[ext] || '';
+}
+
+async function openPreview(file) {
+  if (file.trashed) return;
+  releasePreview();
+  const controller = new AbortController();
+  previewController = controller;
+  byId('preview-title').textContent = file.name;
+  const path = file.split ? '/api/split-download/' + encodeURIComponent(file.id)
+    : '/api/download/' + encodeURIComponent(file.account.id) + '/' + encodeURIComponent(file.id);
+  byId('preview-download').href = path;
+  previewContent.textContent = 'Loading preview…';
+  if (!previewDialog.open) previewDialog.showModal();
+  const type = previewType(file);
+  if (!type) {
+    previewContent.textContent = 'Preview is unavailable for this format. Use Download to open it in a compatible application.';
+    return;
+  }
+  const limit = 50 * 1024 * 1024;
+  if (Number(file.size) > limit) {
+    previewContent.textContent = 'Preview supports files up to 50 MB. Use Download for this file.';
+    return;
+  }
+  try {
+    const response = await fetch(path, { signal: controller.signal });
+    if (!response.ok) throw new Error((await response.json()).error || 'Could not open this file.');
+    const reader = response.body.getReader();
+    const chunks = [];
+    let size = 0;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) {
+        await reader.cancel();
+        throw new Error('Preview supports files up to 50 MB. Use Download for this file.');
+      }
+      chunks.push(value);
+    }
+    if (controller.signal.aborted) return;
+    const blob = new Blob(chunks, { type });
+    if (type === 'text/plain') {
+      const text = document.createElement('pre');
+      text.textContent = (await blob.text()).slice(0, 1000000);
+      if (controller.signal.aborted) return;
+      previewContent.replaceChildren(text);
+      return;
+    }
+    previewUrl = URL.createObjectURL(blob);
+    let element;
+    if (type.startsWith('image/')) {
+      element = document.createElement('img');
+      element.alt = file.name;
+    } else if (type === 'application/pdf') {
+      element = document.createElement('iframe');
+      element.title = file.name;
+    } else {
+      element = document.createElement(type.startsWith('video/') ? 'video' : 'audio');
+      element.controls = true;
+    }
+    element.src = previewUrl;
+    element.onerror = () => {
+      previewContent.textContent = 'Your browser could not preview this file. Use Download to open it.';
+    };
+    previewContent.replaceChildren(element);
+  } catch (error) {
+    if (!controller.signal.aborted) previewContent.textContent = error.message;
+  }
+}
+
 function fileKind(file) {
   const type = file.mimeType || '';
   if (type.startsWith('image/') || /\.(png|jpe?g|gif|webp|heic|svg|avif|bmp|tiff?)$/i.test(file.name)) return ['Image', '🖼'];
@@ -694,6 +787,7 @@ function renderFiles() {
       ...(file.purging ? [] : [['Restore', () => changeFile(file, 'restore')]]),
       ['Delete permanently', () => changeFile(file, 'delete')]
     ] : [
+      ['Preview', () => openPreview(file)],
       ['Rename', () => changeFile(file, 'rename')],
       ['Download', () => window.location.assign(download)],
       ['Make a copy', () => changeFile(file, 'copy')],
@@ -721,6 +815,12 @@ function renderFiles() {
     item.append(footer);
     if (kind === 'Image') nameLabel.prepend(typeIcon('image'));
     setupSelectionCard(item, fileKey(file), file.name, [file], action => changeFile(file, action));
+    item.ondblclick = event => {
+      if (!event.target.closest('.item-actions')) void openPreview(file);
+    };
+    item.addEventListener('keydown', event => {
+      if (event.target === item && event.key === 'Enter') void openPreview(file);
+    });
     if (!showingBin && file.hasThumbnail) {
       const preview = document.createElement('img');
       preview.className = 'file-preview';

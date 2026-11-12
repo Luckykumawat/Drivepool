@@ -8,8 +8,8 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png?v=3">
   <link rel="icon" href="/icon-192.png?v=3">
-  <link rel="stylesheet" href="/style.css?v=21">
-  <script src="/app.js?v=21" type="module"></script>
+  <link rel="stylesheet" href="/style.css?v=22">
+  <script src="/app.js?v=22" type="module"></script>
 </head>
 <body>
   <header class="shell top">
@@ -104,6 +104,16 @@
         </div>
       </section>
   </main>
+  <dialog id="file-preview-dialog" aria-labelledby="preview-title">
+    <header class="preview-header">
+      <h2 id="preview-title"></h2>
+      <div class="actions">
+        <a id="preview-download" class="download">Download</a>
+        <form method="dialog"><button autofocus aria-label="Close preview">Close</button></form>
+      </div>
+    </header>
+    <div id="preview-content" aria-live="polite"></div>
+  </dialog>
   <dialog id="move-dialog" aria-labelledby="move-title">
     <h2 id="move-title">Move to folder</h2>
     <label for="move-destination">Destination</label>
