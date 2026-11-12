@@ -324,12 +324,110 @@ function syncSelection() {
   byId('selection-label').textContent = count + ' selected';
 }
 
+let draggedRows = [];
+const internalDragType = 'application/x-drivepool-items';
+
+async function moveDraggedRows(destination) {
+  if (bulkBusy || showingBin || !draggedRows.length) return;
+  const rows = draggedRows;
+  draggedRows = [];
+  const folders = rows.filter(row => row.rowKey.startsWith('folder:'))
+    .map(row => row.rowKey.slice(7))
+    .filter((path, _, all) => !all.some(parent => path.startsWith(parent + '/')));
+  if (folders.some(path => destination === path || destination.startsWith(path + '/'))) {
+    return message('A folder cannot be moved inside itself.');
+  }
+  const known = new Set([...savedFolders, ...files.filter(file => !file.trashed).map(file => file.folder)]);
+  const targets = folders.map(source => ({
+    source, target: [destination, source.split('/').at(-1)].filter(Boolean).join('/')
+  })).filter(({ source, target }) => source !== target);
+  if (targets.some(({ target }) => [...known].some(path => path === target || path?.startsWith(target + '/')))) {
+    return message('A folder with that name already exists at the destination.');
+  }
+  const keys = new Set(rows.flatMap(row => row.keys));
+  const moving = files.filter(file => !file.trashed && keys.has(fileKey(file)));
+  bulkBusy = true;
+  syncSelection();
+  let moved = 0;
+  try {
+    for (const file of moving) {
+      const containing = folders.find(path => file.folder === path || file.folder?.startsWith(path + '/'));
+      const mapping = targets.find(row => row.source === containing);
+      if (containing && !mapping) continue;
+      const folder = mapping ? mapping.target + file.folder.slice(mapping.source.length) : destination;
+      if ((file.folder || '') === folder) continue;
+      await runFileAction(file, 'move', { folder });
+      file.folder = folder;
+      moved++;
+    }
+    for (const { source, target } of targets) {
+      await read('/api/folder-paths', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source, destination: target })
+      });
+      savedFolders = savedFolders.map(path =>
+        path === source || path.startsWith(source + '/') ? target + path.slice(source.length) : path);
+      if (!savedFolders.includes(target)) savedFolders.push(target);
+    }
+    selectedFiles.clear();
+    message('Moved ' + moved + ' files' + (targets.length ? ' and ' + targets.length + ' folders.' : '.'));
+  } catch (error) {
+    message(moved + ' files moved. Remaining items could not be moved. ' + error.message);
+  } finally {
+    bulkBusy = false;
+    renderFiles();
+    await refreshAfterChange().catch(error => message(error.message));
+  }
+}
+
+function folderDropTarget(element, destination) {
+  element.addEventListener('dragover', event => {
+    if (!event.dataTransfer.types.includes(internalDragType) || bulkBusy || showingBin) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'move';
+    element.classList.add('folder-drop-target');
+  });
+  element.addEventListener('dragleave', event => {
+    if (!element.contains(event.relatedTarget)) element.classList.remove('folder-drop-target');
+  });
+  element.addEventListener('drop', event => {
+    if (!event.dataTransfer.types.includes(internalDragType)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    element.classList.remove('folder-drop-target');
+    void moveDraggedRows(destination);
+  });
+}
+
 function setupSelectionCard(card, rowKey, name, items, act) {
   const keys = items.map(fileKey);
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
   card.setAttribute('aria-label', name);
   selectionCards.push({ card, keys, rowKey, act });
+  card.draggable = !showingBin;
+  card.addEventListener('dragstart', event => {
+    if (bulkBusy || showingBin || event.target.closest('.item-actions')) {
+      event.preventDefault();
+      return;
+    }
+    if (!card.classList.contains('is-selected')) {
+      selectedFiles.clear();
+      keys.forEach(key => selectedFiles.add(key));
+      selectionAnchor = rowKey;
+      syncSelection();
+    }
+    draggedRows = card.classList.contains('is-selected') && keys.length
+      ? selectionCards.filter(row => row.keys.length && row.keys.every(key => selectedFiles.has(key)))
+      : [selectionCards.find(row => row.rowKey === rowKey)];
+    event.dataTransfer.setData(internalDragType, rowKey);
+    event.dataTransfer.effectAllowed = 'move';
+  });
+  card.addEventListener('dragend', () => {
+    draggedRows = [];
+    document.querySelectorAll('.folder-drop-target').forEach(el => el.classList.remove('folder-drop-target'));
+  });
   const select = event => {
     if (bulkBusy) return;
     const clicked = selectionCards.findIndex(row => row.rowKey === rowKey);
@@ -521,6 +619,7 @@ function renderFiles() {
       button.type = 'button';
       button.textContent = name;
       button.onclick = () => openFolder(parts.slice(0, index).join('/'));
+      folderDropTarget(button, parts.slice(0, index).join('/'));
       breadcrumbs.append(button);
     }
   }
@@ -580,6 +679,7 @@ function renderFiles() {
     item.append(button, actionsMenu(name, actions));
     setupSelectionCard(item, 'folder:' + path, name, available.filter(file =>
       file.folder === path || file.folder?.startsWith(path + '/')), action => updateFolder(path, action));
+    folderDropTarget(item, path);
     item.ondblclick = event => {
       if (!event.target.closest('.item-actions')) openFolder(path);
     };

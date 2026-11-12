@@ -690,6 +690,18 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
       return redirect(res, '/');
     }
     const connections = await query('SELECT * FROM @drives WHERE user_id=? ORDER BY rowid', user);
+    if (path === '/api/folder-paths' && req.method === 'POST') {
+      let change;
+      try { change = JSON.parse(await requestText(req, 8192)); } catch { fail(400, 'Invalid folder move.'); }
+      const { source, destination } = change;
+      if (!validFolderPath(source) || !validFolderPath(destination) ||
+          destination === source || destination.startsWith(source + '/')) fail(400, 'Invalid folder move.');
+      await query(`UPDATE @folders SET path=? || substr(path, ?) WHERE user_id=? AND
+        (path=? OR substr(path,1,?)=?)`, destination, source.length + 1, user,
+        source, source.length + 1, source + '/');
+      await query('INSERT INTO @folders (user_id,path) VALUES (?,?) ON CONFLICT (user_id,path) DO NOTHING', user, destination);
+      return json(res, 200, { ok: true });
+    }
     if (path === '/api/folders' && req.method === 'POST') {
       let folder;
       try { folder = JSON.parse(await requestText(req, 8192))?.path; } catch { fail(400, 'Invalid folder path.'); }

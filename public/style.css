@@ -614,3 +614,9 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
   border-radius: 8px;
   font: inherit;
 }
+
+.folder-drop-target {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+  background: var(--selection) !important;
+}
