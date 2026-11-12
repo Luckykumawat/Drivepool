@@ -677,3 +677,10 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
 @media (max-width: 640px) {
   .brand img { width: 160px; }
 }
+
+.brand img {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  object-fit: contain;
+}
