@@ -34,10 +34,51 @@ function updateAppearance() {
   themeColor.content = dark ? '#171c20' : themeColors.get(document.documentElement.dataset.theme);
 }
 systemAppearance.addEventListener('change', updateAppearance);
-appearanceToggle.addEventListener('click', () => {
-  appearance = document.documentElement.dataset.mode === 'dark' ? 'light' : 'dark';
-  try { localStorage.setItem('drivepool-appearance', appearance); } catch {}
-  updateAppearance();
+let appearanceChanging = false;
+appearanceToggle.addEventListener('click', async () => {
+  if (appearanceChanging) return;
+  const next = document.documentElement.dataset.mode === 'dark' ? 'light' : 'dark';
+  let applied = false;
+  const apply = () => {
+    if (applied) return;
+    applied = true;
+    appearance = next;
+    try { localStorage.setItem('drivepool-appearance', appearance); } catch {}
+    updateAppearance();
+  };
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reducedMotion || !document.startViewTransition) {
+    apply();
+    return;
+  }
+  const bounds = appearanceToggle.getBoundingClientRect();
+  const x = bounds.left + bounds.width / 2;
+  const y = bounds.top + bounds.height / 2;
+  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  appearanceChanging = true;
+  document.documentElement.classList.add('appearance-changing');
+  let transition;
+  try {
+    transition = document.startViewTransition(apply);
+    await transition.ready;
+    const animation = document.documentElement.animate({
+      clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)',
+        'circle(' + radius + 'px at ' + x + 'px ' + y + 'px)']
+    }, {
+      duration: 650,
+      easing: 'cubic-bezier(.22, .61, .36, 1)',
+      fill: 'both',
+      pseudoElement: '::view-transition-new(root)'
+    });
+    await animation.finished;
+    await transition.finished;
+  } catch {
+    transition?.skipTransition();
+    apply();
+  } finally {
+    document.documentElement.classList.remove('appearance-changing');
+    appearanceChanging = false;
+  }
 });
 
 let savedTheme;

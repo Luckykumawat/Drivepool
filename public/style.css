@@ -950,3 +950,13 @@ button:hover:not(:disabled), .download:hover { background-color: var(--tile); bo
 @media (prefers-reduced-motion: reduce) {
   .appearance-thumb { transition: none; }
 }
+
+
+.appearance-changing::view-transition-group(root) { animation: none; }
+.appearance-changing::view-transition-old(root),
+.appearance-changing::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+.appearance-changing::view-transition-old(root) { z-index: 1; }
+.appearance-changing::view-transition-new(root) { z-index: 2; }
