@@ -10,11 +10,27 @@ Drivepool gives you one workspace for files across multiple personal Google Driv
 - Download your Drivepool uploads from one list.
 - Install the web app from a supported browser on an HTTPS deployment.
 
-## Workspace preview
+## App screenshots
 
-Illustration of the current workspace using demo files.
+Screenshots of the current interface, captured locally with demo accounts and sample files. No personal account data is shown.
 
-![Drivepool workspace with a top search bar, upload sidebar, and grids for folders and files](docs/screenshots/workspace.svg)
+### Landing and sign-in
+
+Connect your Google Drive from the landing page to open your workspace.
+
+![Drivepool landing page with the Connect Google Drive sign-in button](docs/screenshots/landing.jpg)
+
+### Workspace — grid view
+
+After sign-in, browse folders and file cards, search your workspace, and view combined storage and connected Drives in the sidebar.
+
+![Signed-in Drivepool workspace showing folders, file cards, and storage across two demo accounts](docs/screenshots/workspace-grid.jpg)
+
+### Workspace — list view
+
+Switch to list view to see file and folder names, upload dates, and account email badges.
+
+![Drivepool list view showing folders and files with upload dates and demo account email badges](docs/screenshots/workspace-list.jpg)
 
 ## How it works
 
