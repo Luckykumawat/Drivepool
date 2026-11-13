@@ -3,18 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Bring multiple Google Drive accounts into one workspace. See combined available storage, upload automatically, and organize your Drivepool files in one place.">
+  <meta name="description" content="Connect multiple Google Drive accounts in one workspace. View combined available storage, organize files, and automatically choose storage for uploads.">
+  <meta name="google-site-verification" content="X_5kCm-GT8S1y0lMsU4QBIgolgXiBmDvJuj5Sspy1_k">
   <meta name="theme-color" content="#f8fafd">
-  <title>Drivepool — Your drives, together</title>
+  <title>Drivepool — Manage Multiple Google Drive Accounts</title>
+  <link rel="canonical" href="https://drivepool-3s9r.onrender.com/">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Drivepool">
+  <meta property="og:title" content="Drivepool — Manage Multiple Google Drive Accounts">
+  <meta property="og:description" content="Your Google Drives, together. See combined free space, organize files, and let uploads find available storage.">
+  <meta property="og:url" content="https://drivepool-3s9r.onrender.com/">
+  <meta property="og:image" content="https://drivepool-3s9r.onrender.com/landing-workspace.jpg">
+  <meta property="og:image:alt" content="Drivepool workspace with sample files and combined Google Drive storage">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Drivepool — Manage Multiple Google Drive Accounts">
+  <meta name="twitter:description" content="Connect your Google Drives in one workspace. See available storage and manage your Drivepool files together.">
+  <meta name="twitter:image" content="https://drivepool-3s9r.onrender.com/landing-workspace.jpg">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icon-192.png?v=4">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="preload" href="/fonts/google-sans-v1.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/style.css?v=35">
   <link rel="stylesheet" href="/landing.css?v=1">
-  <script src="/app.js?v=36" type="module"></script>
+  <script src="/app.js?v=37" type="module"></script>
 </head>
-<body>
+<body class="landing-ready">
   <header class="shell top">
     <div class="brand-area"><button id="mobile-menu" type="button" aria-label="Open menu" aria-haspopup="dialog" aria-controls="mobile-navigation" hidden>☰</button>
     <a class="brand" href="/"><img src="/icon-192.png?v=4" alt=""> Drivepool</a></div>
@@ -46,10 +60,10 @@
     </div>
   </header>
   <main class="shell">
-    <div id="app-loading" class="app-loading" role="status">
+    <div id="app-loading" class="app-loading" role="status" hidden>
       <span class="loading-indicator" aria-hidden="true"></span> Opening your workspace…
     </div>
-    <div class="overview landing" id="welcome" hidden>
+    <div class="overview landing" id="welcome">
       <section class="lp-hero lp-wrap" aria-labelledby="landing-title">
         <div class="lp-hero-copy">
           <span class="lp-kicker"><span class="lp-dot"></span> YOUR PERSONAL CLOUD, CONNECTED</span>

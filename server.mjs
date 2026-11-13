@@ -632,7 +632,21 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
   try {
     const url = new URL(req.url, origin);
     const path = url.pathname;
-    if (req.method === 'GET' && assets.has(path)) {
+    if ((req.method === 'GET' || req.method === 'HEAD') && path === '/robots.txt') {
+      const content = 'User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /oauth/\nDisallow: /office-viewer.html\n\nSitemap: ' + origin + '/sitemap.xml\n';
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end(req.method === 'HEAD' ? undefined : content);
+    }
+    if ((req.method === 'GET' || req.method === 'HEAD') && path === '/sitemap.xml') {
+      const location = (origin + '/').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;');
+      const content = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>' + location + '</loc></url></urlset>\n';
+      res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8' });
+      return res.end(req.method === 'HEAD' ? undefined : content);
+    }
+    if (path.startsWith('/api/') || path.startsWith('/oauth/') || path.startsWith('/office-viewer.')) {
+      res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    }
+    if ((req.method === 'GET' || req.method === 'HEAD') && assets.has(path)) {
       if (path.startsWith('/office-viewer.')) {
         res.setHeader('Content-Security-Policy',
           "default-src 'none'; script-src " + origin + "; style-src " + origin +
@@ -641,7 +655,18 @@ createServer({ requestTimeout: 60 * 60 * 1000 }, async (req, res) => {
       }
       if (path === '/fonts/google-sans-v1.woff2') res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       const [content, type] = assets.get(path);
-      return res.writeHead(200, { 'Content-Type': type }).end(content);
+      let output = content;
+      if (path === '/') {
+        output = content.toString().replaceAll('https://drivepool-3s9r.onrender.com', origin);
+        const current = await session(req);
+        if (current?.user_id) {
+          output = output.replace('<body class="landing-ready">', '<body class="signed-in">')
+            .replace('<div class="overview landing" id="welcome">', '<div class="overview landing" id="welcome" hidden>')
+            .replace('<div id="app-loading" class="app-loading" role="status" hidden>', '<div id="app-loading" class="app-loading" role="status">');
+          res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+        }
+      }
+      return res.writeHead(200, { 'Content-Type': type }).end(req.method === 'HEAD' ? undefined : output);
     }
     if (req.method === 'POST' && req.headers.origin !== origin) fail(403, 'Invalid request origin.');
     const current = await session(req);
