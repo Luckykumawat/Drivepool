@@ -615,6 +615,8 @@ const assets = new Map([
   ['/fonts/google-sans-v1.woff2', ['fonts/google-sans-v1.woff2', 'font/woff2']],
   ['/app.js', ['app.js', 'text/javascript']],
   ['/style.css', ['style.css', 'text/css']],
+  ['/landing.css', ['landing.css', 'text/css']],
+  ['/landing-workspace.jpg', ['landing-workspace.jpg', 'image/jpeg']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']],
   ['/sw.js', ['sw.js', 'text/javascript']],
   ['/icon-192.png', ['icon-192.png', 'image/png']],

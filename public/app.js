@@ -1337,8 +1337,14 @@ try {
   const { configured, signedIn } = await read('/api/session');
   const connect = byId('connect');
   connect.disabled = !configured;
+  const landingButtons = document.querySelectorAll('[data-landing-connect]');
+  for (const button of landingButtons) {
+    button.disabled = !configured;
+    button.onclick = () => connect.click();
+  }
   connect.onclick = async () => {
     connect.disabled = true;
+    for (const button of landingButtons) button.disabled = true;
     message('Opening Google sign-in…');
     try {
       const { authorizationUrl } = await read('/oauth/start', { method: 'POST' });
@@ -1346,6 +1352,7 @@ try {
     } catch (error) {
       message(error.message);
       connect.disabled = false;
+      for (const button of landingButtons) button.disabled = false;
     }
   };
   connect.textContent = signedIn ? 'Connect another Google Drive' : 'Connect Google Drive';
@@ -1378,6 +1385,7 @@ try {
   }
   byId('library').hidden = !signedIn;
   document.body.classList.toggle('signed-in', signedIn);
+  document.body.classList.toggle('landing-ready', !signedIn);
   if (signedIn) await refresh();
 } catch (error) {
   message(error.message);

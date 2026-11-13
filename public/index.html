@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bring multiple Google Drive accounts into one workspace. See combined available storage, upload automatically, and organize your Drivepool files in one place.">
   <meta name="theme-color" content="#f8fafd">
   <title>Drivepool — Your drives, together</title>
   <link rel="manifest" href="/manifest.webmanifest">
@@ -10,7 +11,8 @@
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="preload" href="/fonts/google-sans-v1.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/style.css?v=35">
-  <script src="/app.js?v=35" type="module"></script>
+  <link rel="stylesheet" href="/landing.css?v=1">
+  <script src="/app.js?v=36" type="module"></script>
 </head>
 <body>
   <header class="shell top">
@@ -20,6 +22,8 @@
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg>
       <input type="search" id="search" aria-label="Search files and folders" placeholder="Search files and folders">
     </div>
+    <nav class="lp-nav landing-only" aria-label="Main navigation"><a href="#why-drivepool">Why Drivepool</a><a href="#features">Features</a><a href="#how-it-works">How it works</a><a href="#for-you">Who it’s for</a><a href="#faq">FAQ</a></nav>
+    <button class="lp-button primary lp-header-cta landing-only" type="button" data-landing-connect>Get started <span aria-hidden="true">↗</span></button>
     <div class="actions" id="app-settings">
       <label class="theme-control">Theme
         <select id="theme-select">
@@ -45,13 +49,42 @@
     <div id="app-loading" class="app-loading" role="status">
       <span class="loading-indicator" aria-hidden="true"></span> Opening your workspace…
     </div>
-    <div class="overview" id="welcome" hidden>
-    <section class="hero">
-      <span class="eyebrow">PERSONAL CLOUD WORKSPACE</span>
-      <h1>Your drives, together.</h1>
-      <p>Connect your Google Drives and manage the files you upload from one place.</p>
-      <button class="primary" id="connect" type="button" disabled>Connect Google Drive</button>
-    </section>
+    <div class="overview landing" id="welcome" hidden>
+      <section class="lp-hero lp-wrap" aria-labelledby="landing-title">
+        <div class="lp-hero-copy">
+          <span class="lp-kicker"><span class="lp-dot"></span> YOUR PERSONAL CLOUD, CONNECTED</span>
+          <h1 id="landing-title">Many drives.<br>One <span>clear space.</span></h1>
+          <p>Bring your Google Drive accounts together. Find your files, see your available storage, and upload without deciding which account to use.</p>
+          <div class="lp-buttons"><button class="primary lp-button" id="connect" type="button" disabled>Connect Google Drive</button><a class="lp-button lp-secondary" href="#how-it-works">See how it works <span aria-hidden="true">↗</span></a></div>
+          <div class="lp-hero-note"><span aria-hidden="true">✓</span> Your Google accounts. Your files. One workspace.</div>
+        </div>
+        <div class="lp-visual" role="img" aria-label="Illustrative Drivepool workspace combining two demo Drives, with 22 GB free and project files in one view">
+          <div class="lp-orbit lp-orbit-one"></div><div class="lp-orbit lp-orbit-two"></div>
+          <div class="lp-mini-app">
+            <div class="lp-mini-top"><span class="lp-mini-brand">∼ <b>Drivepool</b></span><span class="lp-mini-search">⌕ &nbsp; Search your workspace</span><span class="lp-avatar">J</span></div>
+            <div class="lp-mini-body"><div class="lp-mini-side"><span class="lp-mini-new">+ New</span><span class="lp-mini-selected">▤ &nbsp; My files</span><span>♲ &nbsp; Trash</span><span class="lp-mini-cloud">☁ &nbsp; Storage</span><div class="lp-mini-meter"><i></i></div><small>8 GB used of 30 GB</small></div>
+            <div class="lp-mini-files"><strong>Your files</strong><div class="lp-mini-folders"><span>▰ &nbsp; Projects</span><span>▰ &nbsp; Personal</span></div><div class="lp-mini-row"><i class="lp-file-blue">DOC</i><span>Project brief<small>personal@example.com</small></span><span>⋮</span></div><div class="lp-mini-row"><i class="lp-file-green">XLS</i><span>Monthly budget<small>work@example.com</small></span><span>⋮</span></div><div class="lp-mini-row"><i class="lp-file-red">PDF</i><span>Brand guidelines<small>personal@example.com</small></span><span>⋮</span></div></div></div>
+          </div>
+          <div class="lp-storage-float"><span class="lp-storage-icon">☁</span><div><small>COMBINED FREE SPACE</small><strong>22 GB <span>ready for what’s next</span></strong><div class="lp-combined-bar"><i></i><i></i></div><p><span class="lp-dot"></span> Personal Drive <span class="lp-dot lp-green"></span> Work Drive</p></div></div>
+          <div class="lp-upload-float"><span>✓</span><div><b>Right file. Right Drive.</b><small>Upload placement, handled.</small></div></div>
+          <span class="lp-demo-label">Illustrative workspace · demo data</span>
+        </div>
+      </section>
+      <div class="lp-proof lp-wrap"><p>A little less switching. A lot more clarity.</p><div><span>Multiple Google accounts</span><span>One file library</span><span>Smarter uploads</span></div></div>
+      <section class="lp-section lp-wrap lp-split" id="why-drivepool" aria-labelledby="why-title">
+        <div class="lp-capacity-art"><span class="lp-kicker">MAKE ROOM FOR MORE</span><h3>Your space adds up.</h3><div class="lp-drive-line"><span class="lp-drive-icon">P</span><div><b>Personal Drive</b><small>12 GB available</small></div><span class="lp-bar"><i class="lp-bar-personal"></i></span></div><div class="lp-drive-line"><span class="lp-drive-icon lp-green-icon">W</span><div><b>Work Drive</b><small>10 GB available</small></div><span class="lp-bar"><i class="lp-bar-work"></i></span></div><div class="lp-capacity-total"><span>One combined view</span><strong>22 <small>GB free</small></strong></div><p>Example storage across two demo accounts.</p></div>
+        <div class="lp-section-copy"><span class="lp-kicker">WHY DRIVEPOOL</span><h2 id="why-title">Use the space you<br>already have.</h2><p>One Drive is nearly full. Another has room to spare. Drivepool brings that space into one view, so you can focus on your next upload.</p><ul class="lp-checks"><li>See available space across connected accounts.</li><li>Let Drivepool choose where each upload goes.</li><li>Manage your Drivepool files without switching accounts.</li></ul><a class="lp-text-link" href="#features">Explore what you can do <span aria-hidden="true">→</span></a></div>
+      </section>
+      <section class="lp-section lp-wrap" id="features" aria-labelledby="features-title"><div class="lp-section-heading"><span class="lp-kicker">LESS FRICTION. MORE FLOW.</span><h2 id="features-title">Everything in its place.<br>Even across accounts.</h2><p>A familiar file workspace, with the bigger picture built in.</p></div>
+        <div class="lp-feature-grid"><article><span class="lp-feature-icon">⌕</span><h3>Find it in one place</h3><p>Search file and folder names across your Drivepool library. Switch between a visual grid and a detailed list.</p></article><article><span class="lp-feature-icon lp-mint">↥</span><h3>Let uploads find room</h3><p>Upload files or whole folders. Drivepool picks available storage, and large files can span connected Drives.</p></article><article><span class="lp-feature-icon lp-peach">▤</span><h3>Keep your files moving</h3><p>Organize folders, preview supported files, download what you need, and move unwanted files to the bin.</p></article></div>
+        <figure class="lp-product-shot"><img src="/landing-workspace.jpg" alt="Drivepool grid view with folders, document cards and storage details across two demo accounts" width="1486" height="864" loading="lazy"><figcaption>The Drivepool workspace · shown with sample files and demo accounts</figcaption></figure>
+      </section>
+      <section class="lp-steps-band" id="how-it-works" aria-labelledby="steps-title"><div class="lp-wrap lp-section"><div class="lp-section-heading"><span class="lp-kicker">FROM SCATTERED TO SORTED</span><h2 id="steps-title">Your workspace, in three steps.</h2><p>Start with your Google account. Bring the rest together as you go.</p></div><ol class="lp-steps"><li><span class="lp-step-number">01</span><h3>Connect your first Drive</h3><p>Select <b>Connect Google Drive</b>, sign in with Google, and approve the requested access. This is your primary sign-in account.</p></li><li><span class="lp-step-number">02</span><h3>Bring your other Drives</h3><p>Choose <b>Connect another Google Drive</b> in the workspace. Your available storage appears together in the sidebar.</p></li><li><span class="lp-step-number">03</span><h3>Upload. Find. Get on with it.</h3><p>Use <b>+ New</b> or drag files into the workspace. Organize them in folders, search by name, and download when you need them.</p></li></ol><div class="lp-center"><button class="lp-button primary" type="button" data-landing-connect>Get started with Google <span aria-hidden="true">→</span></button></div></div></section>
+      <section class="lp-section lp-wrap" id="for-you" aria-labelledby="audience-title"><div class="lp-audience-heading"><div><span class="lp-kicker">BUILT FOR YOUR EVERYDAY</span><h2 id="audience-title">A clearer space for<br>all the things you do.</h2></div><p>For people with more than one personal Google account—and better things to do than juggle them.</p></div><div class="lp-audience-grid"><article><span>01 / STUDENTS</span><h3>Notes to next semester.</h3><p>Keep uploaded assignments, reading material and project files organized in one library.</p></article><article><span>02 / FREELANCERS & CREATORS</span><h3>More projects. Less switching.</h3><p>Find your uploaded briefs, creative assets and deliverables without remembering which account holds them.</p></article><article><span>03 / EVERYDAY ORGANIZERS</span><h3>Make room for everyday life.</h3><p>Bring documents and personal projects together, and make better use of the storage in your accounts.</p></article></div></section>
+      <section class="lp-section lp-wrap lp-trust" aria-labelledby="trust-title"><span class="lp-trust-symbol" aria-hidden="true">✓</span><div><span class="lp-kicker">YOUR DRIVES STAY YOURS</span><h2 id="trust-title">Connected through Google.<br>Stored in your Drives.</h2><p>You sign in through Google OAuth. Drivepool uses the <code>drive.file</code> permission for files you use with the app. Your uploaded files are stored in your connected Google Drives.</p><p class="lp-small-print">Drivepool is an independent app, not a Google product. It does not add storage to your Google accounts.</p></div></section>
+      <section class="lp-section lp-wrap lp-faq" id="faq" aria-labelledby="faq-title"><div><span class="lp-kicker">A FEW GOOD QUESTIONS</span><h2 id="faq-title">Before you <br>bring it together.</h2></div><div class="lp-faq-list"><details><summary>What exactly does Drivepool do?</summary><p>Drivepool brings multiple personal Google Drive accounts into one file workspace. You can see combined available storage and manage files uploaded through Drivepool, while the files remain in your Google Drives.</p></details><details><summary>Will all my existing Google Drive files appear?</summary><p>The workspace lists files uploaded through Drivepool. It is not a full mirror of every existing file in your Google Drive accounts.</p></details><details><summary>Does it give me extra storage?</summary><p>It combines the available space you already have in your connected accounts. Each account keeps its own Google storage quota; Drivepool does not create extra storage or change your Google plan.</p></details><details><summary>What happens when one Drive does not have enough space?</summary><p>Drivepool chooses available connected storage for an upload. Large files can be split across Drives and reassembled when downloaded through Drivepool. Keep the accounts containing those parts connected to retrieve the complete file.</p></details><details><summary>Which account should I use to sign in again?</summary><p>Use the first Google account you connected. That primary account opens your workspace. Additional connected accounts contribute storage but do not sign you into the same workspace.</p></details><details><summary>Can I use Drivepool on my phone?</summary><p>Yes. Open the website in your mobile browser. On a supported browser, choose Install app. On iPhone, use Safari’s Share menu and Add to Home Screen. An internet connection is required for Drive access.</p></details></div></section>
+      <section class="lp-final lp-wrap"><img src="/icon-192.png?v=4" width="56" height="56" alt=""><h2>Your drives, together.<br>Your day, a little simpler.</h2><p>Give your files one place to come together.</p><button class="lp-button primary" type="button" data-landing-connect>Connect Google Drive <span aria-hidden="true">→</span></button><small>Start with the Google account you want to use for sign-in.</small></section>
+      <footer class="lp-footer lp-wrap"><a class="lp-footer-brand" href="/">∼ &nbsp; Drivepool</a><span>One workspace. More room to think.</span><div><a href="#how-it-works">How it works</a><a href="#faq">FAQ</a><a href="https://github.com/Luckykumawat/Drivepool" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div></footer>
     </div>
     <p id="message" class="notice" role="status" hidden></p>
       <section id="library" hidden>
